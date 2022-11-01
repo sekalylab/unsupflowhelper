@@ -1,0 +1,88 @@
+Package: unsupflowhelper
+Type: Package
+Title: Tools for Unsupervised Flow Cytometry analysis
+Version: 0.1.0
+Date: 2022-10-27
+Description: Serves as a toolkit to analyze, explore and vizualize multicolor flow cytometry experiments. 
+    Aims to provide an intuitive and rapid workflow, from raw data to publishable results.
+Authors@R: c(
+    person(given = "Adam-Nicolas", family = "Pelletier", email = "adam.nicolas.pelletier@rpmbioinfo-solutions.com",
+    role = c("aut", "cre")),
+    person(given = "Ashish", family = "Sharma", email = "ashish.arunkumar.sharma@emory.edu",
+    role = c("ctb")),
+    person(given = "Aarthi", family = "Talla", email = "aarthi.talla@alleninstitute.org",
+    role = c("ctb")),
+    person(given = "Rafick-Pierre", family = "Sekaly", email = "rafick.sekaly@emory.edu",
+    role = c("fnd")))
+URL: https://github.com/sekalylab/unsupflowhelper
+BugReports: https://github.com/sekalylab/unsupflowhelper/issues
+Depends: R (>= 4.0.0)
+biocViews: 
+    ComplexHeatmap,
+    flowCore,
+    flowWorkspace,
+    ggcyto,
+    monocle3,
+    SingleCellExperiment,
+    SummarizedExperiment
+Imports: 
+    Biobase,
+    checkmate,
+    ComplexHeatmap,
+    dplyr,
+    DT,
+    flowCore,
+    flowWorkspace,
+    fs,
+    ggcyto,
+    ggplot2,
+    ggpubr,
+    ggrepel,
+    ggridges,
+    grDevices,
+    igraph,
+    magrittr,
+    MetaCyto,
+    methods,
+    pbapply,
+    purrr,
+    readr,
+    rlang,
+    Rphenograph,
+    rstatix,
+    scales,
+    shiny,
+    shinyFiles,
+    stats,
+    tibble,
+    tidyr,
+    utils,
+    uwot,
+    viridis,
+    writexl
+Suggests:
+    CytoExploreR,
+    monocle3,
+    SingleCellExperiment,
+    SummarizedExperiment
+Remotes: JinmiaoChenLab/Rphenograph
+License: GPL-3
+Encoding: UTF-8
+LazyData: false
+Collate: 
+    'generics.R'
+    'utilities.R'
+    'clustering.R'
+    'controls.R'
+    'dimplots.R'
+    'exporting.R'
+    'flowobj-data.R'
+    'hello.R'
+    'plotting.R'
+    'pseudotime.R'
+    'statistics.R'
+Author: Adam-Nicolas Pelletier [aut],
+    Ashish Sharma [ctb],
+    Aarthi Talla [ctb],
+    Rafick-Pierre Sekaly [fnd]
+RoxygenNote: 7.2.1
