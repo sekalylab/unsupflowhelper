@@ -6,6 +6,107 @@
 #'
 NULL
 
+
+#' Get Sample Metadata
+#'
+#' Retrieves sample metadata from a Flow Object
+#'
+#' @param flow_object a Flow Object
+#'
+#' @return A data.frame
+#'
+#' @export
+#'
+Get_MetaData <- function(flow_object){
+  coll = checkmate::makeAssertCollection()
+  if(methods::is(flow_object) != "flow_object") { coll$push("flow_object not recognized. Please supply a valid flow panel. ")}
+
+  checkmate::reportAssertions(coll)
+
+  return(flowCore::pData(flow_object$flowSet))
+}
+
+#' Get Marker Names
+#'
+#' Retrieves marker Names from a Flow Object
+#'
+#' @param flow_object a Flow Object
+#'
+#' @return A marker name vector
+#'
+#' @export
+#'
+#'
+Get_ClusterAnnotations <- function(flow_object){
+    coll = checkmate::makeAssertCollection()
+    if(methods::is(flow_object) != "flow_object") { coll$push("flow_object not recognized. Please supply a valid flow panel. ")}
+
+    checkmate::reportAssertions(coll)
+
+    return(flow_object$parameters$louvain_annotations)
+}
+
+
+#' Get Cluster Annotations
+#'
+#' Retrieves cluster annotations from a Flow Object
+#'
+#' @param flow_object a Flow Object
+#'
+#' @return A data.frame
+#'
+#' @export
+#'
+Get_MetaData <- function(flow_object){
+  coll = checkmate::makeAssertCollection()
+  if(methods::is(flow_object) != "flow_object") { coll$push("flow_object not recognized. Please supply a valid flow panel. ")}
+
+  checkmate::reportAssertions(coll)
+
+  return(flowCore::pData(flow_object$flowSet))
+}
+
+#' Get Marker Names
+#'
+#' Retrieves marker Names from a Flow Object
+#'
+#' @param flow_object a Flow Object
+#' @param select Put a filter on which markers to display. Accepted values are 'all', 'included' or 'excluded'.
+#' @param show_channel_name Logical argument to determine whether or not to also display associated channel names. Defaults to TRUE.
+#'
+#' @return A marker name vector
+#'
+#' @export
+#'
+
+
+Get_MarkerNames <- function(flow_object,
+                            select = "all",
+                            show_channel_name = TRUE){
+  coll = checkmate::makeAssertCollection()
+  if(methods::is(flow_object) != "flow_object") { coll$push("flow_object not recognized. Please supply a valid flow panel. ")}
+  checkmate::assertCharacter(select, len = 1, any.missing = F, null.ok = F, .var.name = "select", add = coll)
+  checkmate::assertLogical(show_channel_name, len = 1, any.missing = F, null.ok = F, .var.name = "show_channel_names", add = coll)
+  checkmate::reportAssertions(coll)
+
+  if(!select %in% c("all", "included", "excluded")){
+    coll$push(paste("Invalid 'select' value ", sQuote(select),". Valid 'select' values are 'all', 'included' or 'excluded'.", sep = "")) }
+  if(methods::is(flow_object) != "flow_object") { coll$push("flow_object not recognized. Please supply a valid flow panel. ")}
+  checkmate::reportAssertions(coll)
+  out <- flowCore::markernames(flow_object$flowSet)
+
+  if(select == "included"){
+    out <- out[out %in% flow_object$parameters$include_markers]
+  } else if(select == "excluded"){
+    out <- out[out %in% flow_object$parameters$exclude_markers]
+  }
+  if(show_channel_name == FALSE){
+    out <- unname(out)
+  }
+  return(out)
+}
+
+
 #' Downsample a FlowSet to keep n events in each file
 #'
 #' Randomly selects n events from each file in a subset, in order to get fewer events than the total number across all files.
@@ -23,7 +124,6 @@ NULL
 #'
 #' @export
 #'
-
 Downsampling_FlowSet <- function(flowSet,
                                  n ){
   coll = checkmate::makeAssertCollection()
@@ -526,6 +626,7 @@ annotate_clusters_shiny <- function(flow_object ){
 #'
 #' @param flow_object A Flow Object
 #' @param metadata A data.frame containing sample annotations. Must contain a column called `SampleID`, that contains the sample names stored in the Flow Object.
+#' @param key_column Name of the column matching sample names.
 #'
 #' @return A Flow Object
 #'
@@ -533,35 +634,37 @@ annotate_clusters_shiny <- function(flow_object ){
 #'
 
 add_sample_metadata <- function(flow_object,
-                                metadata){
+                                metadata,
+                                key_column){
   coll <- checkmate::makeAssertCollection()
   if(methods::is(flow_object) != "flow_object"){
     coll$push("flow_object not recognized. Please supply a valid flow object.")
   }
   checkmate::assertClass(metadata, classes = "data.frame", null.ok = F, .var.name = "metadata", add = coll)
+  checkmate::assertCharacter(key_column)
   checkmate::reportAssertions(coll)
 
-  if(!"SampleID" %in% colnames(metadata)){
-    coll$push("Sample metadata does not contain a corrresponding SampleID column")
+  if(!key_column %in% colnames(metadata)){
+    coll$push(paste("Sample metadata does not contain a corrresponding ", sQuote(key_column) ," column", sep = ""))
   }
   checkmate::reportAssertions(coll)
 
   df <- as.data.frame(flowWorkspace::pData(flow_object$flowSet)) %>%
             tibble::rownames_to_column("SampleID")
 
-  invalid_samples <- setdiff(df$SampleID, metadata$SampleID)
+  invalid_samples <- setdiff(df$SampleID, metadata[[key_column]])
   if(length(invalid_samples) > 0){
     coll$push(paste("Samples ", paste(sQuote(invalid_samples), collapse = "; "),
-                    " were not found in the selected flow_object. Use valid SampleID, such as those found with ",
-                    "`sampleNames(flow_object$flowSet)`. ", sep = ""))
+                    " were not found in the selected flow_object. Use valid SampleID, such as those found in row.names of ",
+                    "`Get_Metadata(flow_object)`. ", sep = ""))
 
   }
   checkmate::reportAssertions(coll)
   rm_df <- colnames(metadata)
-  rm_df <- rm_df[rm_df != "SampleID"]
+  rm_df <- rm_df[rm_df != key_column]
 
   df <- df[,setdiff(colnames(df), rm_df)]
-  df <- dplyr::left_join(df, metadata, by = "SampleID" ) %>%
+  df <- dplyr::left_join(df, metadata, by = c("SampleID" = key_column)) %>%
                   tibble::column_to_rownames("SampleID")
 
   na_count <- length(apply(is.na(df), 2, which))

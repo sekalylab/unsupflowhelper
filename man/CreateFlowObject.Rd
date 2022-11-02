@@ -5,8 +5,9 @@
 \title{Create a FlowObject from flow data}
 \usage{
 CreateFlowObject(
-  flowSet,
-  name,
+  flowSet = NULL,
+  files = NULL,
+  name = NULL,
   subsample = 5000,
   min_events = 500,
   max_total_events = 2e+05,
@@ -14,7 +15,9 @@ CreateFlowObject(
 )
 }
 \arguments{
-\item{flowSet}{A FlowSet object.}
+\item{flowSet}{A FlowSet object. Defaults to NULL. Either a flowSet or files must be supplied using the `files` parameter.}
+
+\item{files}{A list of flow cytometry sample files. Can be either CSV or FCS files exported by FlowJo. Either a flowSet or files must be supplied using the `flowSet` parameter.}
 
 \item{name}{identifier for the dataset}
 

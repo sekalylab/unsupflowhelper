@@ -4,12 +4,14 @@
 \alias{add_sample_metadata}
 \title{Add metadata annotations}
 \usage{
-add_sample_metadata(flow_object, metadata)
+add_sample_metadata(flow_object, metadata, key_column)
 }
 \arguments{
 \item{flow_object}{A Flow Object}
 
 \item{metadata}{A data.frame containing sample annotations. Must contain a column called `SampleID`, that contains the sample names stored in the Flow Object.}
+
+\item{key_column}{Name of the column matching sample names.}
 }
 \value{
 A Flow Object
