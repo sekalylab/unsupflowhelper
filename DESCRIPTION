@@ -1,7 +1,7 @@
 Package: unsupflowhelper
 Type: Package
 Title: Tools for Unsupervised Flow Cytometry analysis
-Version: 0.1.0
+Version: 1.0.0
 Date: 2022-10-27
 Description: Serves as a toolkit to analyze, explore and vizualize multicolor flow cytometry experiments. 
     Aims to provide an intuitive and rapid workflow, from raw data to publishable results.
