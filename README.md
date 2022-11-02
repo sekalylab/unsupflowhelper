@@ -1,4 +1,4 @@
-# unsupflowhelper v0.1
+# unsupflowhelper v1.0
 
 Unsupflowhelper is a R suite of tools for unsupervised analysis and visualization of flow cytometry data. 
 
