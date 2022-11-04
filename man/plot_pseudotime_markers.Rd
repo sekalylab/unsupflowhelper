@@ -2,7 +2,7 @@
 % Please edit documentation in R/pseudotime.R
 \name{plot_pseudotime_markers}
 \alias{plot_pseudotime_markers}
-\title{Plot a pseudotime boxplot per group}
+\title{Plot a pseudotime marker heatmap}
 \usage{
 plot_pseudotime_markers(flow_object, trajectory, method = "ward.D2")
 }
@@ -17,5 +17,5 @@ plot_pseudotime_markers(flow_object, trajectory, method = "ward.D2")
 A ComplexHeatmap
 }
 \description{
-Display a boxplot for pseudotime on the Y-axis, cluster or sample annotations on the X-Axis.
+Display the relative expression for each  marker relative to pseudoplot.
 }

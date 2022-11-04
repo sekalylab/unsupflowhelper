@@ -6,16 +6,20 @@
 \usage{
 plot_cluster_heatmap(
   flow_object,
+  annotation = NULL,
   show_control = FALSE,
   min_mfi = -1000,
   clustering_method = "ward.D2",
   clustering_distance = "euclidean",
   louvain_select = NULL,
-  add_mfi = FALSE
+  add_mfi = FALSE,
+  annotation_df = NULL
 )
 }
 \arguments{
 \item{flow_object}{A Flow Object}
+
+\item{annotation}{A cluster annotation to display.}
 
 \item{show_control}{Logical argument to determine whether or not show reference control MFI to the heatmap. Defaults to FALSE.}
 
@@ -28,6 +32,8 @@ plot_cluster_heatmap(
 \item{louvain_select}{Select louvain clusters to represent on the heatmap}
 
 \item{add_mfi}{Logical argument to determine whether or not to add the MFI representation of each cluster on the absolute scale when set to TRUE.}
+
+\item{annotation_df}{Provide a custom cluster annotation data.frame.}
 }
 \value{
 A ggplot object

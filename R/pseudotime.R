@@ -337,7 +337,7 @@ plot_grouped_pseudotime <- function(flow_object,
 
 
   checkmate::assertCharacter(trajectory, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
-  checkmate::assertCharacter(group.by, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
+  checkmate::assertCharacter(group.by, any.missing = F, null.ok = F, len = 1, .var.name = "group.by", add = coll)
   checkmate::assertCharacter(y, any.missing = F, null.ok = F, len = 1, .var.name = "freq", add = coll)
   checkmate::assertChoice(y, choices = c("freq", "density"), .var.name = "y", add = coll)
   checkmate::assertNumeric(adjust, any.missing = F, null.ok = F, len = 1, lower = 0.1, upper = 3, .var.name = "adjust", add = coll)
@@ -363,20 +363,20 @@ plot_grouped_pseudotime <- function(flow_object,
     }
   }
 
-  if(!is.null(group.by)){
-    if(!group.by %in% colnames(df)){
-      coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
-                      ": Cannot group.by variable ", group.by,
-                      ". Column not found in metadata. Options are ",
-                      paste(sQuote(character_column), collapse = ";") , sep = "" ))
-    } else if(group.by %in% numeric_columns){
-      coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
-                      ": Cannot group.by variable ",
-                      group.by, ". Metadata column cannot be of numeric type. Options are ",
-                      paste(sQuote(character_column), collapse = ";") , sep = "" ))
 
-    }
+  if(!group.by %in% colnames(df)){
+    coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
+                    ": Cannot group.by variable ", group.by,
+                    ". Column not found in metadata. Options are ",
+                    paste(sQuote(character_column), collapse = ";") , sep = "" ))
+  } else if(group.by %in% numeric_columns){
+    coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
+                    ": Cannot group.by variable ",
+                    group.by, ". Metadata column cannot be of numeric type. Options are ",
+                    paste(sQuote(character_column), collapse = ";") , sep = "" ))
+
   }
+
   checkmate::reportAssertions(coll)
 
   group_n <- df %>%
@@ -386,7 +386,7 @@ plot_grouped_pseudotime <- function(flow_object,
     dplyr::ungroup()
 
   pseudo_df <- df %>%
-    dplyr::left_join(.data, flow_object$pseudotime %>%
+    dplyr::left_join(flow_object$pseudotime %>%
                        tibble::rownames_to_column("cellID") %>%
                        tidyr::gather(key = "trajectory_name", value = "pseudotime", -.data$cellID), by = "cellID")
 
@@ -408,10 +408,10 @@ plot_grouped_pseudotime <- function(flow_object,
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::filter(!is.na(.data$pseudotime))
-  if(methods::is(df[,group.by]) == "factor"){
+  if(is.factor(df[,group.by]) == TRUE){
     pseudo_df$grouping_value <- factor(pseudo_df$grouping_value, levels  = levels(df[,group.by]))
   }
-  p <- ggplot(pseudo_df, aes_string("pseudotime", after_stat("count"), color = "grouping_value" )) +
+  p <- ggplot(pseudo_df, aes(.data$pseudotime, after_stat(.data$count), color = .data$grouping_value )) +
     theme_bw() +
     geom_density(adjust = adjust) +
     xlab("Pseudotime") +
@@ -449,7 +449,7 @@ plot_pseudotime_boxplot <- function(flow_object,
 
 
   checkmate::assertCharacter(trajectory, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
-  checkmate::assertCharacter(group.by, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
+  checkmate::assertCharacter(group.by, any.missing = F, null.ok = F, len = 1, .var.name = "group.by", add = coll)
 
   checkmate::reportAssertions(coll)
 
@@ -466,33 +466,33 @@ plot_pseudotime_boxplot <- function(flow_object,
   numeric_columns <- colnames(df)[unlist(lapply(df, is.numeric), use.names = FALSE)]
   character_column <- colnames(df)[!unlist(lapply(df, is.numeric), use.names = FALSE)]
 
-  if(!is.null(group.by)){
-    if(!group.by %in% colnames(df)){
-      coll$push(paste("Grouping factor ", group.by, " is not found in sample metadata"))
-      checkmate::reportAssertions(coll)
-    }
+
+  if(!group.by %in% colnames(df)){
+    coll$push(paste("Grouping factor ", group.by, " is not found in sample metadata"))
+    checkmate::reportAssertions(coll)
   }
 
-  if(!is.null(group.by)){
-    if(!group.by %in% colnames(df)){
-      coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
-                      ": Cannot group.by variable ", group.by,
-                      ". Column not found in metadata. Options are ",
-                      paste(sQuote(character_column), collapse = ";") , sep = "" ))
-    } else if(group.by %in% numeric_columns){
-      coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
-                      ": Cannot group.by variable ",
-                      group.by, ". Metadata column cannot be of numeric type. Options are ",
-                      paste(sQuote(character_column), collapse = ";") , sep = "" ))
 
-    }
+
+  if(!group.by %in% colnames(df)){
+    coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
+                    ": Cannot group.by variable ", group.by,
+                    ". Column not found in metadata. Options are ",
+                    paste(sQuote(character_column), collapse = ";") , sep = "" ))
+  } else if(group.by %in% numeric_columns){
+    coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
+                    ": Cannot group.by variable ",
+                    group.by, ". Metadata column cannot be of numeric type. Options are ",
+                    paste(sQuote(character_column), collapse = ";") , sep = "" ))
+
   }
+
   checkmate::reportAssertions(coll)
 
   pseudo_df <- df %>%
-    dplyr::left_join(.data, flow_object$pseudotime %>%
+    dplyr::left_join(flow_object$pseudotime %>%
                        tibble::rownames_to_column("cellID") %>%
-                       tidyr::gather(.data$trajectory_name, .data$pseudotime, -.data$cellID), by = "cellID") %>%
+                       tidyr::gather(key = "trajectory_name", value = "pseudotime", -.data$cellID), by = "cellID") %>%
     dplyr::filter(!is.na(.data$pseudotime))
 
 
@@ -520,9 +520,9 @@ plot_pseudotime_boxplot <- function(flow_object,
 
 }
 
-#' Plot a pseudotime boxplot per group
+#' Plot a pseudotime marker heatmap
 #'
-#' Display a boxplot for pseudotime on the Y-axis, cluster or sample annotations on the X-Axis.
+#' Display the relative expression for each  marker relative to pseudoplot.
 #'
 #' @param flow_object A Flow Object
 #' @param trajectory Name of the trajectory to plot.
@@ -582,7 +582,7 @@ plot_pseudotime_markers <- function(flow_object,
   } else {
     pseudo_df <- pseudo_df[pseudo_df$trajectory_name == trajectory,] %>%
       dplyr::arrange(.data$pseudotime) %>%
-      dplyr::left_join(.data, flow_object$louvain %>%
+      dplyr::left_join(flow_object$louvain %>%
                          tibble::rownames_to_column("cellID"), by = "cellID") %>%
       dplyr::mutate(louvain = as.character(.data$louvain)) %>%
       tibble::column_to_rownames("cellID")
@@ -597,10 +597,13 @@ plot_pseudotime_markers <- function(flow_object,
     dplyr::group_by(.data$marker) %>%
     dplyr::mutate(value = dplyr::ntile(.data$value, n = 100)) %>%
     dplyr::ungroup() %>%
-    tidyr::spread(.data$marker, .data$value) %>%
-    tibble::column_to_rownames("cellID") %>%
-    scale(.data, center = T, scale = T) %>%
-    t()
+    dplyr::group_by(.data$marker) %>%
+    dplyr::mutate(scaled = scale(.data$value, scale = T, center = T)) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-.data$value) %>%
+    tidyr::spread(.data$marker, .data$scaled) %>%
+    tibble::column_to_rownames("cellID") #%>%
+  mat <- t(mat)
 
   mat <- mat[,row.names(pseudo_df)]
 

@@ -474,7 +474,7 @@ annotate_clusters_shiny <- function(flow_object ){
 
 
   ref <- !is.null(flow_object$staining_controls)
-  louvain_order <- levels(plot_cluster_heatmap(flow_object, show_control = ref)$data$louvain)
+  louvain_order <- levels(plot_cluster_heatmap(flow_object, show_control = ref, annotation = NULL)$data$annotation_label)
 
   cluster_df <- as.data.frame(flow_object$parameters$louvain_annotations)
   cluster_df2 <- as.data.frame(cluster_df[match(intersect(louvain_order, cluster_df$louvain), cluster_df$louvain),]) %>%
@@ -516,14 +516,14 @@ annotate_clusters_shiny <- function(flow_object ){
     ),
     fluidRow(
       column(width = 6,
-             tags$h4("Cluster Heatmap"),
-             plotOutput("heatmap"),
-             tags$h5("Add a cluster annotation column"),
              # custom column name
              textInput(inputId = "nameColumn", "New Column Name"),
              actionButton(inputId = "addColumn", "Add/Reset Column"),
              hr(),
-
+             tags$h4("Cluster Heatmap"),
+             uiOutput("column_sel"),
+             plotOutput("heatmap"),
+             tags$h5("Add a cluster annotation column"),
              helpText("1. Write the name of a new cluster annotation. Multiple cluster annotations can be used in parallel. ", br(),
                       "2. Click `Add Column`. ", br(),
                       "3. Add labels by double-clicking on the table cells.", br(),
@@ -549,14 +549,15 @@ annotate_clusters_shiny <- function(flow_object ){
   )
 
 
-  server <- function(input, output){
+  server <- function(input, output, session){
 
     #data <- reactive({cluster_df})
 
     rv <- reactiveValues(data = cluster_df2)
-    #reactiveData <- reactiveVal()
 
-    output$heatmap <- renderPlot({plot_cluster_heatmap(flow_object, show_control = ref)})
+    output$heatmap <- renderPlot({plot_cluster_heatmap(flow_object, show_control = ref,
+                                                       annotation = input$column_sel,
+                                                       annotation_df = rv[["data"]])})
     # observe data
     # observeEvent(data(),{
     #   reactiveData(data())
@@ -604,8 +605,17 @@ annotate_clusters_shiny <- function(flow_object ){
 
 
     })
+    output$column_sel = renderUI({
+      selectizeInput("column_sel",
+                     label = h5("Select Annotation Column"),
+                     choices = setdiff(colnames(rv[["data"]]), "louvain"),
+                     multiple = TRUE,
+                     options = list(maxItems = 1))
+    })
 
-
+    observeEvent(input$x_cell_edit, {
+      updateSelectizeInput(session, "column_sel", selected = input$select_col)
+    })
     observeEvent(input$done, {
       out_df <- rv[["data"]]
       out_df <- out_df[match( cluster_df$louvain, out_df$louvain),]

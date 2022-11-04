@@ -256,12 +256,14 @@ cluster_stacked_barplot <- function(flow_object,
 #' Graphs a histogram, similar to a 1D FlowJo plot, of the expression of a selected marker for each cluster in a Flow Object.
 #'
 #' @param flow_object A Flow Object
+#' @param annotation A cluster annotation to display.
 #' @param show_control Logical argument to determine whether or not show reference control MFI to the heatmap. Defaults to FALSE.
 #' @param min_mfi Minimum MFI value to be displayed on the heatmap. Any value below this will be set to this value. Useful if you have a few extremely negative events. Defaults to -1000.
 #' @param clustering_method Clustering method for hierarchical clustering. Viable options can be found with ?hclust
 #' @param clustering_distance Clustering distance for hierarchical clustering. Viable options can be found with ?dist
 #' @param add_mfi Logical argument to determine whether or not to add the MFI representation of each cluster on the absolute scale when set to TRUE.
 #' @param louvain_select Select louvain clusters to represent on the heatmap
+#' @param annotation_df Provide a custom cluster annotation data.frame.
 #'
 #' @return A ggplot object
 #'
@@ -269,12 +271,14 @@ cluster_stacked_barplot <- function(flow_object,
 #'
 
 plot_cluster_heatmap <- function(flow_object,
+                                 annotation = NULL,
                                  show_control = FALSE,
                                  min_mfi = -1000,
                                  clustering_method = "ward.D2",
                                  clustering_distance = "euclidean",
                                  louvain_select = NULL,
-                                 add_mfi = FALSE){
+                                 add_mfi = FALSE,
+                                 annotation_df = NULL){
   coll <- checkmate::makeAssertCollection()
   if(methods::is(flow_object) != "flow_object"){
     coll$push("flow_object not recognized. Please supply a valid flow object.")
@@ -283,6 +287,7 @@ plot_cluster_heatmap <- function(flow_object,
   checkmate::assertCharacter(clustering_method, len = 1, add = coll, any.missing = F, null.ok = F, .var.name = "clustering_method" )
   checkmate::assertNumeric(min_mfi,lower = -1500, upper = 0,  len = 1, add = coll, any.missing = F, null.ok = F, .var.name = "min_mfi" )
   checkmate::assertCharacter(clustering_distance, len = 1, add = coll, any.missing = F, null.ok = F, .var.name = "clustering_distance" )
+  checkmate::assertCharacter(annotation, len = 1, add = coll, any.missing = F, null.ok = T, .var.name = "annotation" )
   checkmate::assertChoice(clustering_method, choices = c("ward,D", "ward.D2", "single", "complete", "average",
                                                          "mcquitty", "median", "centroid"),
                           .var.name = "clustering_method", add = coll)
@@ -295,6 +300,38 @@ plot_cluster_heatmap <- function(flow_object,
     coll$push(paste("Louvain clusters not found in flow object. First run ",sQuote("Cluster_flow"), ". ", sep = ""))
   }
   checkmate::reportAssertions(coll)
+
+  valid_annot <- setdiff(colnames(flow_object$parameters$louvain_annotations), "louvain")
+  if(!is.null(annotation)){
+    if(length(valid_annot) == 0){
+      coll$push("flow object does not contain cluster annotations. First run 'annotate_clusters'")
+      checkmate::reportAssertions(coll)
+    } else if(!annotation %in% valid_annot){
+      coll$push(paste("Annotation ", sQuote(annotation), " was not found in the flow object. Valid values are ", paste(sQuote(valid_annot), collapse = "; "), ". ", sep = ""))
+      checkmate::reportAssertions(coll)
+    }
+  }
+
+
+  if(is.null(annotation_df)){
+    annot_df <- flow_object$parameters$louvain_annotations
+  } else{
+    annot_df <- annotation_df
+  }
+  if(!is.null(annotation)){
+    annot_df <- annot_df %>%
+      dplyr::select(.data$louvain, dplyr::all_of(annotation)) %>%
+      dplyr::rename(annotation = 2) %>%
+      dplyr::mutate(annotation_label = ifelse(is.na(.data$annotation) | .data$annotation == "", .data$louvain,
+                                              paste(.data$annotation, " (", .data$louvain,")", sep = "" )))
+    flowDF_annot <- flowDF_annot %>%
+      dplyr::left_join(annot_df, by = "louvain")
+  } else {
+    annot_df <- annot_df %>%
+      dplyr::mutate(annotation_label = .data$louvain)
+    flowDF_annot <- flowDF_annot %>%
+      dplyr::left_join(annot_df, by = "louvain")
+  }
 
 
 
@@ -313,9 +350,9 @@ plot_cluster_heatmap <- function(flow_object,
 
   #included_markers <- setdiff(markernames(flow_object$flowSet),flow_object$parameters$exclude_markers)
   included_markers <- flow_object$parameters$include_markers
-  fDF <- flowDF_annot[,intersect(c(included_markers, "louvain"),colnames(flowDF_annot))] %>%
-    tidyr::gather(key = "marker", value = "expression", -.data$louvain) %>%
-    dplyr::group_by(.data$louvain,.data$marker) %>%
+  fDF <- flowDF_annot[,intersect(c(included_markers, "annotation_label"),colnames(flowDF_annot))] %>%
+    tidyr::gather(key = "marker", value = "expression", -.data$annotation_label) %>%
+    dplyr::group_by(.data$annotation_label,.data$marker) %>%
     dplyr::summarise(med = stats::median(.data$expression)) %>%
     dplyr::ungroup()
 
@@ -338,8 +375,8 @@ plot_cluster_heatmap <- function(flow_object,
       dplyr::group_by(.data$marker) %>%
       dplyr::summarise(med = stats::median(.data$expression, na.rm = T)) %>%
       dplyr::ungroup() %>%
-      dplyr::mutate(louvain = "Control") %>%
-      dplyr::select(.data$marker, .data$med, .data$louvain)
+      dplyr::mutate(annotation_label = "Control") %>%
+      dplyr::select(.data$marker, .data$med, .data$annotation_label)
 
   }
 
@@ -347,14 +384,16 @@ plot_cluster_heatmap <- function(flow_object,
   mat <- fDF %>%
     dplyr::mutate(med = trans.obj$transform(.data$med)) %>%
     tidyr::spread(.data$marker, .data$med) %>%
-    tibble::column_to_rownames("louvain")
+    tibble::column_to_rownames("annotation_label")
 
   if(!is.null(louvain_select)){
-    invalid_filter <- setdiff(as.character(louvain_select), as.character(row.names(mat)))
+
+    invalid_filter <- setdiff(as.character(louvain_select), as.character(annot_df$louvain))
     if(length(invalid_filter) > 0){
       coll$push("Invalid louvain cluster filter values")
     }
-    mat <- mat[as.character(louvain_select),]
+    label_select <- annot_df[as.character(annot_df$louvain) %in% as.character(louvain_select),]$annotation_label
+    mat <- mat[as.character(label_select),]
   }
 
 
@@ -369,7 +408,7 @@ plot_cluster_heatmap <- function(flow_object,
 
   if(show_control == TRUE){
     fDF <- as.data.frame(rbind(fDF, ref_df)) %>%
-      dplyr::mutate(Type = ifelse(.data$louvain == "Control", "Control", "Cluster"))
+      dplyr::mutate(Type = ifelse(.data$annotation_label == "Control", "Control", "Cluster"))
 
   } else {
     fDF <- fDF %>%
@@ -391,8 +430,8 @@ plot_cluster_heatmap <- function(flow_object,
 
 
   if(!is.null(louvain_select)){
-    flowDF_scaled <- flowDF_scaled[flowDF_scaled$louvain %in% c("Control", as.character(louvain_select)),]
-    fDF <- fDF[fDF$louvain %in% c("Control", as.character(louvain_select)),]
+    flowDF_scaled <- flowDF_scaled[flowDF_scaled$annotation_label %in% c("Control", as.character(label_select)),]
+    fDF <- fDF[fDF$annotation_label %in% c("Control", as.character(label_select)),]
 
   }
   col_order  <- row.names(mat)[ord]
@@ -404,7 +443,7 @@ plot_cluster_heatmap <- function(flow_object,
   }
 
 
-  flowDF_scaled$louvain <- factor(flowDF_scaled$louvain,
+  flowDF_scaled$annotation_label <- factor(flowDF_scaled$annotation_label,
                                   levels = as.character(col_order))
 
   flowDF_scaled$marker <- factor(flowDF_scaled$marker,
@@ -412,9 +451,9 @@ plot_cluster_heatmap <- function(flow_object,
 
   fDF$marker <- factor(fDF$marker,
                        levels = colnames(mat)[ord_markers])
+  fDF <- fDF %>% dplyr::left_join(annot_df, by = "annotation_label")
 
-
-  p <- ggplot(flowDF_scaled, aes_string(x = "louvain", y = "marker", fill = "scaled" )) +
+  p <- ggplot(flowDF_scaled, aes_string(x = "annotation_label", y = "marker", fill = "scaled" )) +
     geom_tile(color = "black",
               lwd = 0.5,
               linetype = 1) +
@@ -429,10 +468,11 @@ plot_cluster_heatmap <- function(flow_object,
     ylab("Markers") +
     guides(fill = guide_colourbar(barwidth = 15,
                                   barheight = 0.5)) +
-    theme(legend.position="bottom")
+    theme(legend.position="bottom",
+          axis.text.x = element_text(angle = 45, vjust = 0.9, hjust = 0.95))
   if(add_mfi == T){
 
-    p2 <- ggplot(fDF, aes_string(x = "marker", y = "med", color = "louvain", shape = "Type")) +
+    p2 <- ggplot(fDF, aes_string(x = "marker", y = "med", color = "annotation_label", shape = "Type")) +
       geom_point(size = 2) +
       theme_classic() +
       ggcyto::scale_y_flowjo_biexp() +

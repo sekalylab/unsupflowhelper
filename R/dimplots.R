@@ -35,7 +35,6 @@ NULL
 
 plot_umap <- function(flow_object,
                       dot_size = 0.5,
-                      #equalize = FALSE,
                       alpha = 0.5,
                       group.by = NULL,
                       split.by = NULL,
@@ -62,16 +61,7 @@ plot_umap <- function(flow_object,
 
   #flowDF_annot <- get_flowSet_matrix(flow_object, add_sample_id = T, annotations = T)
   df <- get_flowSet_matrix(flow_object, add_sample_id = T, annotations = T)
-  #flowDF_annot <- flowDF_annot[,intersect(c("UMAP1", "UMAP2", "louvain", "partition", "SampleID"), colnames(flowDF_annot))]
 
-  # sample_metadata <- flowWorkspace::pData(flow_object$flowSet) %>% tibble:: rownames_to_column("SampleID")
-  # df <- flowDF_annot %>%
-  #   dplyr::left_join(., sample_metadata, by = "SampleID") %>%
-  #   dplyr::ungroup()
-
-
-  #
-  #
 
   if("louvain" %in% colnames(df)){
     df$louvain <- factor(as.character(df$louvain))
@@ -140,12 +130,6 @@ plot_umap <- function(flow_object,
   }
 
   checkmate::reportAssertions(coll)
-
-  # sample_metadata <- flowWorkspace::pData(flow_object$flowSet) %>% tibble:: rownames_to_column("SampleID")
-  # df <- flowDF_annot %>%
-  #   dplyr::left_join(., sample_metadata, by = "SampleID") %>%
-  #   dplyr::ungroup()
-  #return(df)
 
   numeric_columns <- colnames(df)[unlist(lapply(df, is.numeric), use.names = FALSE)]
   character_column <- colnames(df)[!unlist(lapply(df, is.numeric), use.names = FALSE)]

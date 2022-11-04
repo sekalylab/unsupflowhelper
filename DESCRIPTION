@@ -81,6 +81,7 @@ Collate:
     'plotting.R'
     'pseudotime.R'
     'statistics.R'
+    'th_trajectory-data.R'
 Author: Adam-Nicolas Pelletier [aut],
     Ashish Sharma [ctb],
     Aarthi Talla [ctb],
