@@ -17,7 +17,8 @@ install_github("sekalylab/unsupflowhelper")
 
 A few additional optional packages are also recommended for more advanced analysis.
 ```
-BiocManager::install("monocle3")
+devtools::install_github("cvarrichio/Matrix.utils")
+devtools::install_github("cole-trapnell-lab/monocle3")
 BiocManager::install("SingleCellExperiment")
 BiocManager::install("SummarizedExperiment")
 ```
