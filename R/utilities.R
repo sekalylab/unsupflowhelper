@@ -688,4 +688,110 @@ add_sample_metadata <- function(flow_object,
 }
 
 
+#' Select files for flow object - Shiny
+#'
+#' Select files
+#'
+#' @param dir working directory
+#'
+#' @return A file list
+#'
+
+add_metadata_shiny <- function(flow_object){
+  
+  ui <- fluidPage(
+    headerPanel(
+      "File selection"
+    ),
+    sidebarLayout(
+      sidebarPanel(
+        tags$h5("Select metadata file"),
+        
+        
+        shinyFiles::shinyFilesButton("file", "File select", "Please select a file",
+                                     multiple = FALSE,
+                                     filetype = list(data = c("xls","xlsx", "tsv", "csv")),
+                                     viewtype = "detail"),
+        helpText("Note: You can select XLS, XLSX, TSV or CSV files  \n\n"),
+        
+        uiOutput("column_sel"),
+        # tags$h5(htmlOutput("column_valid")),
+        
+        actionButton("submit", "Submit")
+        
+      ),
+      mainPanel(
+        tags$h4("Sample Metadata"),
+        DT::dataTableOutput("metaDF"),
+        
+        tags$hr()
+      )
+    )
+  )
+  server <- function(input, output){
+    volumes <- c(workDir = getwd(), Home = fs::path_home(), shinyFiles::getVolumes()())
+    shinyFiles::shinyFileChoose(input, "file", roots = volumes)
+    
+    data <- eventReactive(input$file, {
+      pathfile <- as.character(shinyFiles::parseFilePaths(volumes, input$file)$datapath)
+      if(grepl("xlsx$|xls$", pathfile, ignore.case = T)){
+        df <- readxl::read_excel(pathfile)
+      } else if(grepl("tsv$", pathfile, ignore.case = T)){
+        df <- readr::read_tsv(pathfile)
+      } else {
+        df <- readr::read_csv(pathfile)
+      }
+      
+    })
+    output$metaDF <- DT::renderDataTable({  DT::datatable(data(),
+                                                          editable = T,
+                                                          options = list(pageLength = 10))})
+    
+    
+    output$column_sel = renderUI({
+      if(!is.null(data())){
+        selectizeInput("column_sel",
+                       label = h5("Select Annotation Column"),
+                       choices = unique(c("name", colnames(as.data.frame(data())))),
+                       multiple = TRUE,
+                       selected = "name", 
+                       options = list(maxItems = 1))
+      } else {
+        selectizeInput("column_sel",
+                       label = h5("Select Annotation Column"),
+                       choices = c("name"),
+                       multiple = TRUE,
+                       selected = "name",
+                       options = list(maxItems = 1))
+      }
+    })
+    
+    # output$column_valid <- renderText({
+    #   pData_cols <- flowCore::pData(flow_object$flowSet)
+    #   if(length(intersect(input$column_sel, colnames(as.data.frame(data())))) == 0){
+    #     print( paste("<B>WARNING</B>: Metadata contains no column ", input$column_sel, 
+    #                  " Select a valid column. \n\n", sep = ""))
+    #   } else if(length(intersect(pData_cols$name, as.data.frame(data())[,input$column_sel])) == length(pData_cols$name)) {
+    #     print(paste("Matching values found between metadata column ", sQuote(input$column_sel), " and flowSet sample names. Joining...", sep  =""))
+    #   } else if(length(intersect(pData_cols$name, 
+    #                              as.data.frame(data())[,input$column_sel])) == length(pData_cols$name)) {
+    #     print(paste("Matching values found between metadata column ", sQuote(input$column_sel), " and flowSet filenames. Joining...", sep = ""))
+    #   } else {
+    #     print("<B>WARNING</B>: Incomplete or absent matching values from current flowSet metadata. \n\n")
+    #   }
+    #   
+    # })
+    
+    
+    submitInput <- observeEvent( input$submit,{
+      out_df <- as.data.frame(data())
+      out <- list("metadata_df" = out_df, "key" = input$column_sel )
+      shiny::stopApp(out)
+      
+    })
+  }
+  
+  sel <- shiny::runApp(shinyApp(ui = ui, server = server))
+  
+}
 

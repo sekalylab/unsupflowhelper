@@ -1,9 +1,110 @@
 #' @import checkmate
 #' @import flowCore
 #' @import magrittr
+#' @import shiny
 #' @importFrom rlang .data
 #'
 NULL
+
+flow_object <- setClass(
+  Class = "flow_object",
+  slots = c(
+    flowSet = "flowSet",
+    dataset = "character",
+    parameters = "list",
+    dims = "data.frame",
+    louvain = "data.frame",
+    staining_controls = "flowSet",
+    trajectories = "list",
+    pseudotime = "data.frame"
+  )
+)
+
+
+#' Print Flow Object
+#'
+#' Prints the contents of the object. 
+#'
+#' @param obj A Flow Object object. 
+#'
+#'
+
+print.flow_object<-function(obj){
+  cat("An object of class flow_object \n")
+  cat(length(Get_MarkerNames(obj, show_channel_name = F, select = "all")), " markers across" ,
+             length(names(obj$flowSet@frames)), " samples.\n ")
+  cat(length(Get_MarkerNames(obj, show_channel_name = F, select = "included")), " included markers. \n ")
+  cat(length(Get_MarkerNames(obj, show_channel_name = F, select = "excluded")), " excluded markers. \n\n ")
+  if(!is.null(obj$dims)){
+    cat("Data transformed using the ", obj$parameters$transformation, " method\n")
+    cat("UMAP dimensions calculated \n ")
+  }
+  if(!is.null(obj$louvain)){
+    cat(length(unique(obj$louvain$louvain)), "louvain clusters detected \n ")
+  }
+  
+}
+
+
+#' Select files for flow object - Shiny
+#'
+#' Select files
+#'
+#' @param dir working directory
+#'
+#' @return A file list
+#'
+
+select_files_shiny <- function(dir){
+
+  ui <- fluidPage(
+    headerPanel(
+      "File selection"
+    ),
+    sidebarLayout(
+      sidebarPanel(
+        tags$h5("Select sample files"),
+
+        
+        shinyFiles::shinyFilesButton("file", "File select", "Please select a file",
+                                     multiple = TRUE,
+                                     filetype = list(data = c("fcs","csv")),
+                                     viewtype = "detail"),
+        helpText("Note: You can select FCS or CSV files (if exported from FlowJo) \n\n"),
+        
+        actionButton("submit", "Submit")
+        
+      ),
+      mainPanel(
+        tags$h4("Selected files"),
+        DT::dataTableOutput("fileDF"),
+        
+        tags$hr()
+      )
+    )
+  )
+  server <- function(input, output){
+    volumes <- c(workDir = dir, Home = fs::path_home(), shinyFiles::getVolumes()())
+    shinyFiles::shinyFileChoose(input, "file", roots = volumes)
+  
+    data <- eventReactive(input$file, {
+      pathfile <- as.character(shinyFiles::parseFilePaths(volumes, input$file)$datapath)
+      namefile <- as.character(shinyFiles::parseFilePaths(volumes, input$file)$name)
+      df <- data.frame("Sample Name" = namefile, "Path" = pathfile)
+    })
+    output$fileDF <- DT::renderDataTable({  DT::datatable(data(),
+                                                              editable = T,
+                                                              options = list(pageLength = 30))})
+    submitInput <- observeEvent( input$submit,{
+      out_df <- as.data.frame(data())
+      shiny::stopApp(out_df$Path)
+    
+    })
+  }
+  
+  sel <- shiny::runApp(shinyApp(ui = ui, server = server))
+  
+}
 
 
 
@@ -18,6 +119,7 @@ NULL
 #' @param min_events Minimum number of events per file. Any sample found with events under this value will be ignored. Defaults to 500.
 #' @param max_total_events Total number of events across samples cannot exceed this value: subsampling number will be adjusted accordingly. Defaults to  2e+05
 #' @param unequal Logical argument to determine whether or not to allow to take unequal number of events if some samples are limiting. When set to True. Defaults to FALSE.
+#' @param interactive Logical argument to determine whether or not to use the interactive mode to select files in a graphical user interface . Defaults to FALSE. 
 #'
 #' @return A Flow Object
 #'
@@ -35,7 +137,8 @@ CreateFlowObject <- function(flowSet = NULL,
                              subsample = 5000,
                              min_events = 500,
                              max_total_events = 200000,
-                             unequal = FALSE){
+                             unequal = FALSE,
+                             interactive = FALSE){
 
   coll = checkmate::makeAssertCollection()
   checkmate::assertCharacter(name, len = 1, any.missing = F, .var.name = "name", add = coll )
@@ -45,10 +148,11 @@ CreateFlowObject <- function(flowSet = NULL,
   checkmate::assertNumeric(min_events, len = 1, lower = 100, upper = 100000, all.missing = F, .var.name = "min_events", add = coll)
   checkmate::assertCharacter(files, min.len = 1,unique = T, null.ok = T, any.missing = F, .var.name = "files", add = coll)
   checkmate::assertNumeric(max_total_events, len = 1, lower = 100, upper = 20000000, all.missing = F, .var.name = "max_total_events", add = coll)
-  checkmate::assertLogical(unequal, .var.name = "unequal", add = coll)
-  if(is.null(flowSet) & is.null(files)){
+  checkmate::assertLogical(unequal, any.missing = F, null.ok = F, .var.name = "unequal", add = coll)
+  checkmate::assertLogical(interactive, any.missing = F, null.ok = F, .var.name = "interactive", add = coll)
+  if(is.null(flowSet) & is.null(files) & interactive == FALSE){
     # print("Insufficient valid files (< 3) in input directory with enough events. Change subsampling parameter or verify files... ABORTING. ")
-    coll$push("Error: Must supply at least a value to the 'files'OR 'flowSet' parameters.")
+    coll$push("Error: Must supply at least a value to the 'files'OR 'flowSet' parameters, or use the interactive mode.")
   }
   if(!is.null(flowSet) & !is.null(files)){
     # print("Insufficient valid files (< 3) in input directory with enough events. Change subsampling parameter or verify files... ABORTING. ")
@@ -58,18 +162,24 @@ CreateFlowObject <- function(flowSet = NULL,
 
   checkmate::reportAssertions(coll)
 
-  if(!is.null(files)){
-    checkmate::assertFile(files, .var.name = "files", add = coll)
+  if(!is.null(files) | interactive == TRUE){
+    if(interactive == TRUE){
+      file_in <- select_files_shiny(getwd())
+    } else {
+      file_in <- files
+      
+    }
+    checkmate::assertFile(file_in, .var.name = "files", add = coll)
     checkmate::reportAssertions(coll)
-    exten <- tolower(unique(tools::file_ext(files)))
+    exten <- tolower(unique(tools::file_ext(file_in)))
     if(length(intersect(exten, c("fcs", "csv"))) != 1){
       coll$push("Error: 'files' can only contain file.paths for either 'csv' OR 'fcs' files.")
     }
     checkmate::reportAssertions(coll)
     if(exten == "csv"){
-      flowSet_inp <- csv_to_flowSet(files)
+      flowSet_inp <- csv_to_flowSet(file_in)
     } else {
-      flowSet_inp <- flowCore::read.flowSet(files = files, transformation = FALSE, truncate_max_range = FALSE)
+      flowSet_inp <- flowCore::read.flowSet(files = file_in, transformation = FALSE, truncate_max_range = FALSE)
     }
   }
 

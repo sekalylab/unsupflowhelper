@@ -70,13 +70,13 @@ License: GPL-3
 Encoding: UTF-8
 LazyData: false
 Collate: 
+    'cd4_flow-data.R'
     'generics.R'
     'utilities.R'
     'clustering.R'
     'controls.R'
     'dimplots.R'
     'exporting.R'
-    'flowobj-data.R'
     'hello.R'
     'plotting.R'
     'pseudotime.R'

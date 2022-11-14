@@ -16,7 +16,7 @@ NULL
 #'
 #' @param flow_object A Flow Object
 #' @param dot_size Control size of points. higher numbers for larger dots. Defaults to 0.5.
-#' @param alpha Control point transparency, 1 is opaque, 0 is invisible. Defaults to 0.5
+#' @param alpha Control point transparency, 1 is opaque, 0 is invisible. Defaults to 1
 #' @param group.by Color points grouping variable. Can include 1. louvain labels; 2. cluster annotations if previously provided; 3. metadata
 #' @param split.by Split the plot by sample/cluster annotations, similar to group.by. Can split by up to 3 variables.
 #' @param ncols Controls the number of columns of plot if splitting by one variable
@@ -35,7 +35,7 @@ NULL
 
 plot_umap <- function(flow_object,
                       dot_size = 0.5,
-                      alpha = 0.5,
+                      alpha = 1,
                       group.by = NULL,
                       split.by = NULL,
                       ncols = NULL,
@@ -386,7 +386,7 @@ plot_umap_heat <- function(flow_object,
 #'
 #' @param flow_object A Flow Object
 #' @param dot_size Control size of points. higher numbers for larger dots. Defaults to 0.5.
-#' @param alpha Control point transparency, 1 is opaque, 0 is invisible. Defaults to 0.5
+#' @param alpha Control point transparency, 1 is opaque, 0 is invisible. Defaults to 1
 #' @param split.by Split the plot by sample/cluster annotations, similar to group.by. Can split by up to 3 variables.
 #' @param ncols Controls the number of columns of plot if splitting by one variable
 #' @param densityn Controls the density controller setting
@@ -399,8 +399,8 @@ plot_umap_heat <- function(flow_object,
 #' @export
 
 plot_density_umap <- function(flow_object,
-                              dot_size = 0.05,
-                              alpha = 0.5,
+                              dot_size = 0.5,
+                              alpha = 1,
                               split.by = NULL,
                               ncols = NULL,
                               densityn = 256,
@@ -497,9 +497,10 @@ plot_density_umap <- function(flow_object,
                       paste(sQuote(character_column), collapse = ";") , sep = "" ))
       checkmate::reportAssertions(coll)
     }
+
     #df <- df[!is.na(df[split.by]),]
     if(length(split.by) > 1){
-      df <- df %>% tidyr::unite(.data$split_col, split.by, sep = "_", remove = F)
+      df <- df %>% tidyr::unite("split_col", split.by, sep = "_", remove = F)
     } else {
       df$split_col <- df[[split.by]]
 
@@ -514,7 +515,7 @@ plot_density_umap <- function(flow_object,
       filt2$density <- get_density(filt2, densityn)
       return(filt2)
     }))
-
+    
     p <- ggplot(as.data.frame(df), aes_string(x="UMAP1", y="UMAP2", colour = "density" )) +
       theme_bw() +
       #theme(panel.grid = element_blank()) +
@@ -524,7 +525,7 @@ plot_density_umap <- function(flow_object,
     if(show_trajectories == TRUE){
       part_valid <- names(table(get_flowSet_matrix(flow_object, add_sample_id =  T)$partition))
       traj_df <- dplyr::bind_rows(flow_object$trajectories) %>%
-        dplyr::filter(.data$partition %in% part_valid)
+                  dplyr::filter(.data$partition %in% part_valid)
 
       p <-  p + geom_segment(data = traj_df, aes_string(x = "source_prin_graph_dim_1",
                                                        y = "source_prin_graph_dim_2",
@@ -533,6 +534,7 @@ plot_density_umap <- function(flow_object,
                              color = "black")
 
     }
+    
     # return(p)
     if(length(split.by) == 1){
       p <- p + facet_wrap(stats::as.formula(paste("~ `", split.by, "`", sep = "")), ncol = ncols )
@@ -542,7 +544,7 @@ plot_density_umap <- function(flow_object,
       })), collapse = " + ")
       p <- p + facet_grid(stats::as.formula(paste("`", split.by[1],"`" , " ~ ", split_2p, sep = "")))
     }
-
+  
 
   } else {
     df$density <- get_density(df, densityn)
@@ -556,7 +558,7 @@ plot_density_umap <- function(flow_object,
     if(show_trajectories == TRUE){
       part_valid <- names(table(get_flowSet_matrix(flow_object, add_sample_id =  T)$partition))
       traj_df <- dplyr::bind_rows(flow_object$trajectories) %>%
-        dplyr::filter(.data$partition %in% part_valid)
+                  dplyr::filter(.data$partition %in% part_valid)
 
       p <-  p + geom_segment(data = traj_df, aes_string(x = "source_prin_graph_dim_1",
                                                          y = "source_prin_graph_dim_2",
@@ -579,7 +581,7 @@ plot_density_umap <- function(flow_object,
 #'
 #' @param flow_object A Flow Object
 #' @param dot_size Control size of points. higher numbers for larger dots. Defaults to 0.5.
-#' @param alpha Control point transparency, 1 is opaque, 0 is invisible. Defaults to 0.5
+#' @param alpha Control point transparency, 1 is opaque, 0 is invisible. Defaults to 1
 #' @param trajectory Name of the trajectory from which to display pseudotime.
 #' @param viridis_palette Name of the viridis palette to use to color pseudotime values.
 #'

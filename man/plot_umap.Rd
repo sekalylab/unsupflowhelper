@@ -7,7 +7,7 @@
 plot_umap(
   flow_object,
   dot_size = 0.5,
-  alpha = 0.5,
+  alpha = 1,
   group.by = NULL,
   split.by = NULL,
   ncols = NULL,
@@ -21,7 +21,7 @@ plot_umap(
 
 \item{dot_size}{Control size of points. higher numbers for larger dots. Defaults to 0.5.}
 
-\item{alpha}{Control point transparency, 1 is opaque, 0 is invisible. Defaults to 0.5}
+\item{alpha}{Control point transparency, 1 is opaque, 0 is invisible. Defaults to 1}
 
 \item{group.by}{Color points grouping variable. Can include 1. louvain labels; 2. cluster annotations if previously provided; 3. metadata}
 

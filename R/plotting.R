@@ -133,7 +133,7 @@ cluster_jitterplot <- function(flow_object,
                                value = "relative",
                                louvain_select = NULL,
                                group = NULL,
-                               stats = "wilcox"){
+                               stats = NULL){
   coll <- checkmate::makeAssertCollection()
   if(methods::is(flow_object) != "flow_object"){
     coll$push("flow_object not recognized. Please supply a valid flow object.")
@@ -143,8 +143,10 @@ cluster_jitterplot <- function(flow_object,
   checkmate::assertCharacter(value, null.ok = F ,any.missing = F, len = 1, .var.name = "value", add = coll)
   checkmate::assertChoice(value, choices = c("relative", "absolute"), .var.name = "value", add = coll)
   checkmate::assertCharacter(group, null.ok = T ,any.missing = F, len = 1, .var.name = "group", add = coll)
-  checkmate::assertCharacter(stats, null.ok = F ,any.missing = F, len = 1, .var.name = "stats", add = coll)
-  checkmate::assertChoice(stats, choices = c("wilcox", "t.test", "anova", "kruskall"), .var.name = "stats", add = coll)
+  checkmate::assertCharacter(stats, null.ok = T ,any.missing = F, len = 1, .var.name = "stats", add = coll)
+  if(!is.null(stats)){
+    checkmate::assertChoice(stats, choices = c("wilcox", "t.test", "anova", "kruskall"), .var.name = "stats", add = coll)
+  }
   checkmate::reportAssertions(coll)
 
   df <- get_cluster_frequencies(flow_object,
@@ -176,7 +178,7 @@ cluster_jitterplot <- function(flow_object,
         ylab(y_title) +
         theme_bw() +
         theme(axis.text.x = element_text(angle = 45, hjust=1))
-      if(stats != "none"){
+      if(!is.null(stats)){
         p <- p + ggpubr::stat_compare_means(method = stats)
       }
       p <- p + facet_wrap(stats::as.formula(paste("~ `", annotation,"`", sep ="")), scales = "free")
@@ -386,6 +388,8 @@ plot_cluster_heatmap <- function(flow_object,
     tidyr::spread(.data$marker, .data$med) %>%
     tibble::column_to_rownames("annotation_label")
 
+  
+  
   if(!is.null(louvain_select)){
 
     invalid_filter <- setdiff(as.character(louvain_select), as.character(annot_df$louvain))
@@ -394,11 +398,8 @@ plot_cluster_heatmap <- function(flow_object,
     }
     label_select <- annot_df[as.character(annot_df$louvain) %in% as.character(louvain_select),]$annotation_label
     mat <- mat[as.character(label_select),]
-  }
-
-
-
-  colors <- grDevices::colorRampPalette(c("darkblue", "blue", "white", "red", "darkred"))(100)
+  } 
+  
   ord <- stats::hclust( stats::dist(as.matrix(scale(mat, center = T, scale = T)),
                       method = clustering_distance),
                  method = clustering_method)$order
@@ -428,11 +429,31 @@ plot_cluster_heatmap <- function(flow_object,
     dplyr::ungroup() %>%
     dplyr::select(-.data$med)
 
-
+  colorAssign <- function(valueVector, scale_limits = NULL, colors = c("darkblue", "blue", "white", "red", "darkred"), length.vector = 100){
+    colorLS <- grDevices::colorRampPalette(colors = colors)(length.vector)  
+    if(is.null(scale_limits)){
+      breaks <- seq(-max(abs(valueVector)), max(abs(valueVector)), length.out = length.vector)
+    } else {
+      breaks <- seq(scale_limits[1], scale_limits[2], length.out = length.vector)
+    }
+  
+    minBreak <- which(abs(breaks - min(valueVector)) == min(abs(breaks - min(valueVector))))
+    maxBreak <- which(abs(breaks - max(valueVector)) == min(abs(breaks - max(valueVector))))
+    return(colorLS[minBreak:maxBreak])
+  }
+  
   if(!is.null(louvain_select)){
+    fDF_unfilt <- flowDF_scaled
+   
+    
     flowDF_scaled <- flowDF_scaled[flowDF_scaled$annotation_label %in% c("Control", as.character(label_select)),]
+    colors <- colorAssign(valueVector = flowDF_scaled$scaled, 
+                          scale_limits = c(min(fDF_unfilt$scaled, na.rm = T), 
+                                           max(fDF_unfilt$scaled, na.rm = T)))
     fDF <- fDF[fDF$annotation_label %in% c("Control", as.character(label_select)),]
-
+  } else{
+    
+    colors <- colorAssign(valueVector = flowDF_scaled$scaled)
   }
   col_order  <- row.names(mat)[ord]
 

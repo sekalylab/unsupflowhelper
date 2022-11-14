@@ -6,8 +6,8 @@
 \usage{
 plot_density_umap(
   flow_object,
-  dot_size = 0.05,
-  alpha = 0.5,
+  dot_size = 0.5,
+  alpha = 1,
   split.by = NULL,
   ncols = NULL,
   densityn = 256,
@@ -19,7 +19,7 @@ plot_density_umap(
 
 \item{dot_size}{Control size of points. higher numbers for larger dots. Defaults to 0.5.}
 
-\item{alpha}{Control point transparency, 1 is opaque, 0 is invisible. Defaults to 0.5}
+\item{alpha}{Control point transparency, 1 is opaque, 0 is invisible. Defaults to 1}
 
 \item{split.by}{Split the plot by sample/cluster annotations, similar to group.by. Can split by up to 3 variables.}
 

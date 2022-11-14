@@ -4,7 +4,13 @@
 \alias{plot_pseudotime_markers}
 \title{Plot a pseudotime marker heatmap}
 \usage{
-plot_pseudotime_markers(flow_object, trajectory, method = "ward.D2")
+plot_pseudotime_markers(
+  flow_object,
+  trajectory,
+  method = "ward.D2",
+  markers = NULL,
+  show_control = FALSE
+)
 }
 \arguments{
 \item{flow_object}{A Flow Object}
@@ -12,6 +18,10 @@ plot_pseudotime_markers(flow_object, trajectory, method = "ward.D2")
 \item{trajectory}{Name of the trajectory to plot.}
 
 \item{method}{Clustering method to arrange markers. Defaults to "ward.D2".  Accepted values can be found with ?hclust.}
+
+\item{markers}{List of markers to display. If set to NULL, displays all included (i.e. drivers of clustering) markers.}
+
+\item{show_control}{Logical argument to determine whether or not to show reference controls. Defaults to FALSE.}
 }
 \value{
 A ComplexHeatmap

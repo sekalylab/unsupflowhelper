@@ -17,7 +17,7 @@ plot_umap_pseudotime(
 
 \item{dot_size}{Control size of points. higher numbers for larger dots. Defaults to 0.5.}
 
-\item{alpha}{Control point transparency, 1 is opaque, 0 is invisible. Defaults to 0.5}
+\item{alpha}{Control point transparency, 1 is opaque, 0 is invisible. Defaults to 1}
 
 \item{trajectory}{Name of the trajectory from which to display pseudotime.}
 

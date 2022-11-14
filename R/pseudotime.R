@@ -527,7 +527,9 @@ plot_pseudotime_boxplot <- function(flow_object,
 #' @param flow_object A Flow Object
 #' @param trajectory Name of the trajectory to plot.
 #' @param method Clustering method to arrange markers. Defaults to "ward.D2".  Accepted values can be found with ?hclust.
-#'
+#' @param markers List of markers to display. If set to NULL, displays all included (i.e. drivers of clustering) markers. 
+#' @param show_control Logical argument to determine whether or not to show reference controls. Defaults to FALSE.
+#' 
 #' @return A ComplexHeatmap
 #'
 #' @export
@@ -536,21 +538,60 @@ plot_pseudotime_boxplot <- function(flow_object,
 
 plot_pseudotime_markers <- function(flow_object,
                                     trajectory,
-                                    method = "ward.D2"){
+                                    method = "ward.D2",
+                                    markers = NULL, 
+                                    show_control = FALSE){
   coll <- checkmate::makeAssertCollection()
   if (methods::is(flow_object) != "flow_object") {
     coll$push("flow_object not recognized (nor container or panel). Please supply a valid flow object.")
   }
 
-
+  checkmate::assertLogical(show_control, null.ok = F, any.missing = F, len = 1, .var.name = "show_control", add = coll  )
   checkmate::assertCharacter(trajectory, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
-  #assertCharacter(group.by, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
+  checkmate::assertCharacter(markers, any.missing = F, null.ok = T, min.len = 1, .var.name = "markers", add = coll)
+  
   checkmate::reportAssertions(coll)
 
   if(is.null(flow_object$pseudotime)){
     coll$push("No pseudotime values stored in this flow_object. Please use `import_trajectory` first.")
 
   }
+  
+  if(!is.null(markers)){
+    valid_markers <- Get_MarkerNames(flow_object, show_channel_name = F, select = "all")
+    invalid_markers <- setdiff(markers, valid_markers)
+    if(length(invalid_markers) >0){
+      coll$push(paste("Invalid marker names: ", paste(sQuote(invalid_markers), collapse = "; "),
+              "."))
+    }
+  }
+  
+  if(show_control == T){
+    if(is.null(flow_object$staining_controls)){
+      coll$push("Flow object does not contain staining controls. Add them first using add_staining_controls(). ")
+    } else if(methods::is(flow_object$staining_controls) != "flowSet"){
+      coll$push("Staining controls not recognized.  Add them first using add_staining_controls(). ")
+    } else if(length(setdiff(names(flow_object$staining_controls@frames),
+                             c("Unstained", flowCore::markernames(flow_object$flowSet)))) > 0){
+      coll$push("Staining controls not recognized.  Add them first using add_staining_controls(). ")
+    }
+  }
+  # 
+  # if(show_control == TRUE){
+  #   ref_df <- get_reference_matrix(flow_object, add_sample_id = T)
+  #   if(markers %in% ref_df$SampleID){
+  #     ref_df <- ref_df[ref_df$SampleID == marker,]
+  #   } else{
+  #     ref_df <- ref_df[ref_df$SampleID == "Unstained",]
+  #   }
+  #   ref_df <- ref_df %>%
+  #     dplyr::mutate(louvain = "Control")
+  #   ref_df <- ref_df[,c("louvain", "SampleID", marker)]
+  #   df <- rbind(df, ref_df)
+  #   
+  #   
+  #   
+  # }
   checkmate::reportAssertions(coll)
 
   trans.obj <- flowWorkspace::flowjo_biexp_trans(equal.space = TRUE)
@@ -561,7 +602,13 @@ plot_pseudotime_markers <- function(flow_object,
     tidyr::gather(key = "trajectory_name", value = "pseudotime", -.data$cellID) %>%
     dplyr::filter(!is.na(.data$pseudotime))
 
-  mat <- df[,c(flow_object$parameters$include_markers, "cellID")] %>%
+  if(!is.null(markers)){
+    mat <- df[,c(markers, "cellID")] 
+    
+  } else {
+    mat <- df[,c(flow_object$parameters$include_markers, "cellID")]
+  }
+  mat <- mat %>%
     tidyr::gather(key = "marker", value = "value", -.data$cellID) %>%
     dplyr::mutate(value = ifelse(.data$value < -100, -100, .data$value )) %>%
     dplyr::mutate(value = trans.obj$transform(.data$value)) %>%
@@ -629,6 +676,109 @@ plot_pseudotime_markers <- function(flow_object,
   return(hm)
 
 
+}
+
+
+
+#' Plot a pseudotime marker heatmap
+#'
+#' Display the relative expression for each  marker relative to pseudoplot.
+#'
+#' @param cds A Flow Object
+#' @param trajectory Name of the trajectory to plot.
+#' @return A ComplexHeatmap
+#'
+#' @export
+#'
+
+
+FindTrajectoryMarkers <- function(cds,
+                                    trajectory){
+  coll <- checkmate::makeAssertCollection()
+  if(methods::is(cds) != "cell_data_set"){
+    coll$push("Error: cds value is not a valid 'cell_data_set' object from monocle3. ")
+  }
+  checkmate::assertCharacter(trajectory, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
+  #assertCharacter(group.by, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
+  checkmate::reportAssertions(coll)
+  
+
+  
+  
+  # 
+  # pseudo_df <-  flow_object$pseudotime %>%
+  #   tibble::rownames_to_column("cellID") %>%
+  #   tidyr::gather(key = "trajectory_name", value = "pseudotime", -.data$cellID) %>%
+  #   dplyr::filter(!is.na(.data$pseudotime))
+  # 
+  # mat <- df[,c(flow_object$parameters$include_markers, "cellID")] %>%
+  #   tidyr::gather(key = "marker", value = "value", -.data$cellID) %>%
+  #   dplyr::mutate(value = ifelse(.data$value < -100, -100, .data$value )) %>%
+  #   dplyr::mutate(value = trans.obj$transform(.data$value)) %>%
+  #   tidyr::spread(.data$marker, .data$value) %>%
+  #   tibble::column_to_rownames("cellID")
+  # 
+  # 
+  # 
+  # pseudo_df <-  flow_object$pseudotime %>%
+  #   tibble::rownames_to_column("cellID") %>%
+  #   tidyr::gather(key = "trajectory_name", value = "pseudotime", -.data$cellID) %>%
+  #   dplyr::filter(!is.na(.data$pseudotime))
+  # 
+  # invalid_traj <- setdiff(trajectory, names(flow_object$trajectories))
+  # if(length(invalid_traj) > 0){
+  #   coll$push(paste("Invalid trajectory name: ", paste(sQuote(invalid_traj), collapse = "; "), sep = ""))
+  #   checkmate::reportAssertions(coll)
+  # } else {
+  #   pseudo_df <- pseudo_df[pseudo_df$trajectory_name == trajectory,] %>%
+  #     dplyr::arrange(.data$pseudotime) %>%
+  #     dplyr::left_join(flow_object$louvain %>%
+  #                        tibble::rownames_to_column("cellID"), by = "cellID") %>%
+  #     dplyr::mutate(louvain = as.character(.data$louvain)) %>%
+  #     tibble::column_to_rownames("cellID")
+  #   louv_levels <- as.character(sort(unique(as.numeric(as.character(pseudo_df$louvain)))))
+  #   pseudo_df$louvain <- factor(pseudo_df$louvain, levels = louv_levels)
+  #   
+  # }
+  # 
+  # mat <-  mat[row.names(pseudo_df),] %>%
+  #   tibble::rownames_to_column("cellID") %>%
+  #   tidyr::gather(key = "marker", value = "value", -.data$cellID) %>%
+  #   dplyr::group_by(.data$marker) %>%
+  #   dplyr::mutate(value = dplyr::ntile(.data$value, n = 100)) %>%
+  #   dplyr::ungroup() %>%
+  #   dplyr::group_by(.data$marker) %>%
+  #   dplyr::mutate(scaled = scale(.data$value, scale = T, center = T)) %>%
+  #   dplyr::ungroup() %>%
+  #   dplyr::select(-.data$value) %>%
+  #   tidyr::spread(.data$marker, .data$scaled) %>%
+  #   tibble::column_to_rownames("cellID") #%>%
+  # mat <- t(mat)
+  # 
+  # mat <- mat[,row.names(pseudo_df)]
+  # 
+  # louv_cols <- scales::hue_pal()(length(unique(pseudo_df$louvain)))
+  # names(louv_cols) <- unique(pseudo_df$louvain)
+  # ComplexHeatmap::ht_opt("message" = F)
+  # 
+  # hm <- ComplexHeatmap::pheatmap(mat,
+  #                                name = "Z-Score",
+  #                                color = viridis::inferno(100),
+  #                                #color = colorRampPalette(c("darkblue", "blue","white", "red", "darkred"))(100),
+  #                                scale = "none",
+  #                                annotation_col = pseudo_df[c("pseudotime", "louvain")],
+  #                                cluster_cols = F,
+  #                                cluster_rows = T,
+  #                                show_colnames = F,
+  #                                clustering_method = method,
+  #                                main = trajectory,
+  #                                annotation_colors = list("louvain" = louv_cols,
+  #                                                         #"pseudotime" = c("lightgray", "darkgreen")),
+  #                                                         "pseudotime" = viridis::viridis(100)),
+  #                                heatmap_legend_param = list(direction = "vertical"))
+  # return(hm)
+  
+  
 }
 
 
