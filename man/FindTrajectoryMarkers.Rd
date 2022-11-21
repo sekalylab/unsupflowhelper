@@ -4,12 +4,10 @@
 \alias{FindTrajectoryMarkers}
 \title{Plot a pseudotime marker heatmap}
 \usage{
-FindTrajectoryMarkers(cds, trajectory)
+FindTrajectoryMarkers(cds)
 }
 \arguments{
 \item{cds}{A Flow Object}
-
-\item{trajectory}{Name of the trajectory to plot.}
 }
 \value{
 A ComplexHeatmap

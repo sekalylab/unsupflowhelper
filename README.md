@@ -1,4 +1,4 @@
-# unsupflowhelper v1.0
+# unsupflowhelper v1.1
 
 Unsupflowhelper is a R suite of tools for unsupervised analysis and visualization of flow cytometry data. 
 
@@ -21,12 +21,14 @@ devtools::install_github("cvarrichio/Matrix.utils")
 devtools::install_github("cole-trapnell-lab/monocle3")
 BiocManager::install("SingleCellExperiment")
 BiocManager::install("SummarizedExperiment")
+BiocManager::install("tradeSeq")
 ```
 
 ## Vignettes
 A Step-by-step guide to using unsuperflowhelper is available in vignettes.
 
 [Basic vignette](https://sekalylab.github.io/unsupflowhelper/guides/unsupervised_flow_vignette)
+[Trajectory analysis vignette](https://sekalylab.github.io/unsupflowhelper/guides/trajectory_vignette)
 
 
 For a history/changelog, please see the [NEWS](https://github.com/sekalylab/unsupflowhelpr/NEWS.md).

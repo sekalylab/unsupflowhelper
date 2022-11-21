@@ -4,14 +4,21 @@
 \alias{add_sample_metadata}
 \title{Add metadata annotations}
 \usage{
-add_sample_metadata(flow_object, metadata, key_column)
+add_sample_metadata(
+  flow_object,
+  metadata = NULL,
+  key_column = NULL,
+  interactive = FALSE
+)
 }
 \arguments{
 \item{flow_object}{A Flow Object}
 
-\item{metadata}{A data.frame containing sample annotations. Must contain a column called `SampleID`, that contains the sample names stored in the Flow Object.}
+\item{metadata}{A data.frame containing sample annotations.}
 
 \item{key_column}{Name of the column matching sample names.}
+
+\item{interactive}{Logical argument to determine whether or not to activate the interactive mode, which opens up a graphical interface to select a metadata file. Defaults to FALSE.}
 }
 \value{
 A Flow Object

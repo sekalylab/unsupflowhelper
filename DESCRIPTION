@@ -1,7 +1,7 @@
 Package: unsupflowhelper
 Type: Package
 Title: Tools for Unsupervised Flow Cytometry analysis
-Version: 1.0.0
+Version: 1.1.0
 Date: 2022-10-27
 Description: Serves as a toolkit to analyze, explore and vizualize multicolor flow cytometry experiments. 
     Aims to provide an intuitive and rapid workflow, from raw data to publishable results.
@@ -47,6 +47,7 @@ Imports:
     pbapply,
     purrr,
     readr,
+    readxl,
     rlang,
     Rphenograph,
     rstatix,
@@ -61,10 +62,13 @@ Imports:
     viridis,
     writexl
 Suggests:
+    alphahull,
+    bnstruct,
     CytoExploreR,
-    monocle3,
+    monocle3 (>= 1.3.1),
     SingleCellExperiment,
-    SummarizedExperiment
+    SummarizedExperiment,
+    tradeSeq
 Remotes: JinmiaoChenLab/Rphenograph
 License: GPL-3
 Encoding: UTF-8

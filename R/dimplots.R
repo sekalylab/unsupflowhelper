@@ -59,7 +59,7 @@ plot_umap <- function(flow_object,
   checkmate::assertLogical(show_trajectories, null.ok = F, unique = T, len = 1, .var.name = "show_trajectories", add = coll)
   checkmate::reportAssertions(coll)
 
-  #flowDF_annot <- get_flowSet_matrix(flow_object, add_sample_id = T, annotations = T)
+
   df <- get_flowSet_matrix(flow_object, add_sample_id = T, annotations = T)
 
 
@@ -86,8 +86,6 @@ plot_umap <- function(flow_object,
                           "are invalid. Valid clusters range from ",
                           as.character(min(df$louvain)), " to ",
                           as.character(max(df$louvain)),
-                          # as.character(min(flowDF_annot$louvain)), " to ",
-                          # as.character(max(flowDF_annot$louvain)),
                           sep = ""))
 
         }
@@ -179,9 +177,7 @@ plot_umap <- function(flow_object,
       geom_point(size= dot_size, alpha = alpha , shape = 16, stroke = 0,
                  aes_string(color = paste("`", group.by, "`", sep = "")))
     if(show_trajectories == TRUE){
-      part_valid <- names(table(get_flowSet_matrix(flow_object, add_sample_id =  T)$partition))
-      traj_df <- dplyr::bind_rows(flow_object$trajectories) %>%
-        dplyr::filter(.data$partition %in% part_valid)
+      traj_df <- dplyr::bind_rows(flow_object$trajectories)
 
       p <-  p + geom_segment(data = traj_df, aes_string(x = "source_prin_graph_dim_1",
                                                  y = "source_prin_graph_dim_2",
@@ -352,9 +348,7 @@ plot_umap_heat <- function(flow_object,
                             guide = guide_colorbar(barwidth = 0.5,
                                                    barheight = legend_height))
     if(show_trajectories == TRUE){
-      part_valid <- names(table(get_flowSet_matrix(flow_object, add_sample_id =  T)$partition))
-      traj_df <- dplyr::bind_rows(flow_object$trajectories) %>%
-        dplyr::filter(.data$partition %in% part_valid)
+      traj_df <- dplyr::bind_rows(flow_object$trajectories)
 
       p <-  p + geom_segment(data = traj_df, aes_string(x = "source_prin_graph_dim_1",
                                                  y = "source_prin_graph_dim_2",
@@ -515,7 +509,7 @@ plot_density_umap <- function(flow_object,
       filt2$density <- get_density(filt2, densityn)
       return(filt2)
     }))
-    
+
     p <- ggplot(as.data.frame(df), aes_string(x="UMAP1", y="UMAP2", colour = "density" )) +
       theme_bw() +
       #theme(panel.grid = element_blank()) +
@@ -523,9 +517,8 @@ plot_density_umap <- function(flow_object,
       scale_color_identity()
 
     if(show_trajectories == TRUE){
-      part_valid <- names(table(get_flowSet_matrix(flow_object, add_sample_id =  T)$partition))
-      traj_df <- dplyr::bind_rows(flow_object$trajectories) %>%
-                  dplyr::filter(.data$partition %in% part_valid)
+
+      traj_df <- dplyr::bind_rows(flow_object$trajectories)
 
       p <-  p + geom_segment(data = traj_df, aes_string(x = "source_prin_graph_dim_1",
                                                        y = "source_prin_graph_dim_2",
@@ -534,7 +527,7 @@ plot_density_umap <- function(flow_object,
                              color = "black")
 
     }
-    
+
     # return(p)
     if(length(split.by) == 1){
       p <- p + facet_wrap(stats::as.formula(paste("~ `", split.by, "`", sep = "")), ncol = ncols )
@@ -544,7 +537,7 @@ plot_density_umap <- function(flow_object,
       })), collapse = " + ")
       p <- p + facet_grid(stats::as.formula(paste("`", split.by[1],"`" , " ~ ", split_2p, sep = "")))
     }
-  
+
 
   } else {
     df$density <- get_density(df, densityn)
@@ -556,9 +549,8 @@ plot_density_umap <- function(flow_object,
       scale_color_identity()
 
     if(show_trajectories == TRUE){
-      part_valid <- names(table(get_flowSet_matrix(flow_object, add_sample_id =  T)$partition))
-      traj_df <- dplyr::bind_rows(flow_object$trajectories) %>%
-                  dplyr::filter(.data$partition %in% part_valid)
+
+      traj_df <- dplyr::bind_rows(flow_object$trajectories)
 
       p <-  p + geom_segment(data = traj_df, aes_string(x = "source_prin_graph_dim_1",
                                                          y = "source_prin_graph_dim_2",

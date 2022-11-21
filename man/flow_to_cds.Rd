@@ -4,22 +4,10 @@
 \alias{flow_to_cds}
 \title{Export Flow Object to a monocle 3 CDS object.}
 \usage{
-flow_to_cds(
-  flow_object,
-  partition,
-  downsample = 5000,
-  min = 200,
-  scale = FALSE
-)
+flow_to_cds(flow_object, scale = FALSE)
 }
 \arguments{
 \item{flow_object}{A Flow Object}
-
-\item{partition}{Name of a partition in the Flow Object to perform the trajectory analysis with. Partitions are first set to '1' or using the 'SetPartitions' function.}
-
-\item{downsample}{Number of events to keep PER CLUSTER. Cluster based downsampling helps to reducing the computational weight of high frequency clusters, especially if using high subsampling numbers at object creation.}
-
-\item{min}{Minimum number of events to take per cluster.}
 
 \item{scale}{Logical argument to determine whether or not to scale the data prior to automatic detection of partitions.}
 }

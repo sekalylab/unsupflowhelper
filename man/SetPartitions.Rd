@@ -4,7 +4,7 @@
 \alias{SetPartitions}
 \title{Set pseudotime partitions}
 \usage{
-SetPartitions(flow_object, partitions, automatic = TRUE, scale = FALSE)
+SetPartitions(flow_object, partitions, automatic = TRUE, scale = TRUE)
 }
 \arguments{
 \item{flow_object}{A Flow Object}

@@ -11,7 +11,8 @@ CreateFlowObject(
   subsample = 5000,
   min_events = 500,
   max_total_events = 2e+05,
-  unequal = FALSE
+  unequal = FALSE,
+  interactive = FALSE
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ CreateFlowObject(
 \item{max_total_events}{Total number of events across samples cannot exceed this value: subsampling number will be adjusted accordingly. Defaults to  2e+05}
 
 \item{unequal}{Logical argument to determine whether or not to allow to take unequal number of events if some samples are limiting. When set to True. Defaults to FALSE.}
+
+\item{interactive}{Logical argument to determine whether or not to use the interactive mode to select files in a graphical user interface . Defaults to FALSE.}
 }
 \value{
 A Flow Object

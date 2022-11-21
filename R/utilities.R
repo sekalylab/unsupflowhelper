@@ -234,8 +234,8 @@ SubsetFlowObject <- function(flow_object,
   }
 
   data.subset <- flowDF_annot %>%
-    dplyr::mutate(tmp = .data$cellID) %>%
-    tibble::column_to_rownames("tmp")
+                dplyr::mutate(tmp = .data$cellID) %>%
+                tibble::column_to_rownames("tmp")
 
   cells <- row.names(data.subset)[rlang::eval_tidy(expr = expr, data = data.subset)]
 
@@ -332,11 +332,11 @@ ClusterSubsampling <- function(flow_object,
     dplyr::group_by(.data$louvain) %>%
     tidyr::nest() %>%
     dplyr::left_join(ncells, by = "louvain" ) %>%
-    dplyr::mutate(Sample = purrr::map2(.data$data, .data$subsample, .data$sample_n)) %>%
-    tidyr::unnest(.data$Sample) %>%
-    .data$cellID
+    dplyr::mutate(Sample = purrr::map2(.data$data, .data$subsample, dplyr::sample_n)) %>%
+    tidyr::unnest(.data$Sample) #%>%
 
-  sub <- SubsetFlowObject(flow_object, subset = .data$cellID %in% cells)
+
+  sub <- SubsetFlowObject(flow_object, subset = .data$cellID %in% cells$cellID)
 
   return(sub)
 }
@@ -635,8 +635,9 @@ annotate_clusters_shiny <- function(flow_object ){
 #' By default, the order will be performed in alphabetical order.
 #'
 #' @param flow_object A Flow Object
-#' @param metadata A data.frame containing sample annotations. Must contain a column called `SampleID`, that contains the sample names stored in the Flow Object.
+#' @param metadata A data.frame containing sample annotations.
 #' @param key_column Name of the column matching sample names.
+#' @param interactive  Logical argument to determine whether or not to activate the interactive mode, which opens up a graphical interface to select a metadata file. Defaults to FALSE.
 #'
 #' @return A Flow Object
 #'
@@ -644,25 +645,47 @@ annotate_clusters_shiny <- function(flow_object ){
 #'
 
 add_sample_metadata <- function(flow_object,
-                                metadata,
-                                key_column){
+                                metadata = NULL,
+                                key_column = NULL,
+                                interactive = FALSE){
   coll <- checkmate::makeAssertCollection()
   if(methods::is(flow_object) != "flow_object"){
     coll$push("flow_object not recognized. Please supply a valid flow object.")
   }
-  checkmate::assertClass(metadata, classes = "data.frame", null.ok = F, .var.name = "metadata", add = coll)
-  checkmate::assertCharacter(key_column)
+  checkmate::assertClass(metadata, classes = "data.frame", null.ok = T, .var.name = "metadata", add = coll)
+  checkmate::assertCharacter(key_column, len = 1, any.missing = F, null.ok = T, .var.name = "key_column", add = coll)
   checkmate::reportAssertions(coll)
 
-  if(!key_column %in% colnames(metadata)){
-    coll$push(paste("Sample metadata does not contain a corrresponding ", sQuote(key_column) ," column", sep = ""))
-  }
+
+
   checkmate::reportAssertions(coll)
 
   df <- as.data.frame(flowWorkspace::pData(flow_object$flowSet)) %>%
             tibble::rownames_to_column("SampleID")
 
-  invalid_samples <- setdiff(df$SampleID, metadata[[key_column]])
+  if(interactive == T){
+    meta_int <- add_metadata_shiny(flow_object)
+    metadata_df <- meta_int$metadata_df
+    key_col <- meta_int$key
+  } else {
+    if(is.null(metadata)){
+      coll$push("Error: Must supply metadata dataframe in non-interactive mode")
+      checkmate::reportAssertions(coll)
+    } else if(is.null(key_column)){
+      coll$push("Error: Must supply a key column in non-interactive mode")
+      checkmate::reportAssertions(coll)
+    } else {
+      metadata_df <- metadata
+      key_col <- key_column
+    }
+
+  }
+
+  if(!key_col %in% colnames(metadata_df)){
+    coll$push(paste("Sample metadata does not contain a corrresponding ", sQuote(key_col) ," column", sep = ""))
+  }
+
+  invalid_samples <- setdiff(df$SampleID, metadata_df[[key_col]])
   if(length(invalid_samples) > 0){
     coll$push(paste("Samples ", paste(sQuote(invalid_samples), collapse = "; "),
                     " were not found in the selected flow_object. Use valid SampleID, such as those found in row.names of ",
@@ -670,11 +693,11 @@ add_sample_metadata <- function(flow_object,
 
   }
   checkmate::reportAssertions(coll)
-  rm_df <- colnames(metadata)
-  rm_df <- rm_df[rm_df != key_column]
+  rm_df <- colnames(metadata_df)
+  rm_df <- rm_df[rm_df != key_col]
 
   df <- df[,setdiff(colnames(df), rm_df)]
-  df <- dplyr::left_join(df, metadata, by = c("SampleID" = key_column)) %>%
+  df <- dplyr::left_join(df, metadata_df, by = c("SampleID" = key_col)) %>%
                   tibble::column_to_rownames("SampleID")
 
   na_count <- length(apply(is.na(df), 2, which))
@@ -692,13 +715,13 @@ add_sample_metadata <- function(flow_object,
 #'
 #' Select files
 #'
-#' @param dir working directory
+#' @param flow_object working directory
 #'
 #' @return A file list
 #'
 
 add_metadata_shiny <- function(flow_object){
-  
+
   ui <- fluidPage(
     headerPanel(
       "File selection"
@@ -706,34 +729,35 @@ add_metadata_shiny <- function(flow_object){
     sidebarLayout(
       sidebarPanel(
         tags$h5("Select metadata file"),
-        
-        
-        shinyFiles::shinyFilesButton("file", "File select", "Please select a file",
-                                     multiple = FALSE,
-                                     filetype = list(data = c("xls","xlsx", "tsv", "csv")),
-                                     viewtype = "detail"),
+
+        fileInput(inputId = "file", label = "File Select", multiple = F, accept = c("xls","xlsx", "tsv", "csv")),
+        # shinyFiles::shinyFilesButton("file", "File select", "Please select a file",
+        #                              multiple = FALSE,
+        #                              filetype = list(data = c("xls","xlsx", "tsv", "csv")),
+        #                              viewtype = "detail"),
         helpText("Note: You can select XLS, XLSX, TSV or CSV files  \n\n"),
-        
+
         uiOutput("column_sel"),
         # tags$h5(htmlOutput("column_valid")),
-        
+
         actionButton("submit", "Submit")
-        
+
       ),
       mainPanel(
         tags$h4("Sample Metadata"),
         DT::dataTableOutput("metaDF"),
-        
+
         tags$hr()
       )
     )
   )
   server <- function(input, output){
-    volumes <- c(workDir = getwd(), Home = fs::path_home(), shinyFiles::getVolumes()())
-    shinyFiles::shinyFileChoose(input, "file", roots = volumes)
-    
+    # volumes <- c(workDir = getwd(), Home = fs::path_home(), shinyFiles::getVolumes()())
+    # shinyFiles::shinyFileChoose(input, "file", roots = volumes)
+
     data <- eventReactive(input$file, {
-      pathfile <- as.character(shinyFiles::parseFilePaths(volumes, input$file)$datapath)
+      #pathfile <- as.character(shinyFiles::parseFilePaths(volumes, input$file)$datapath)
+      pathfile <- as.character(input$file$datapath)
       if(grepl("xlsx$|xls$", pathfile, ignore.case = T)){
         df <- readxl::read_excel(pathfile)
       } else if(grepl("tsv$", pathfile, ignore.case = T)){
@@ -741,20 +765,20 @@ add_metadata_shiny <- function(flow_object){
       } else {
         df <- readr::read_csv(pathfile)
       }
-      
+
     })
     output$metaDF <- DT::renderDataTable({  DT::datatable(data(),
                                                           editable = T,
                                                           options = list(pageLength = 10))})
-    
-    
+
+
     output$column_sel = renderUI({
       if(!is.null(data())){
         selectizeInput("column_sel",
                        label = h5("Select Annotation Column"),
                        choices = unique(c("name", colnames(as.data.frame(data())))),
                        multiple = TRUE,
-                       selected = "name", 
+                       selected = "name",
                        options = list(maxItems = 1))
       } else {
         selectizeInput("column_sel",
@@ -765,33 +789,33 @@ add_metadata_shiny <- function(flow_object){
                        options = list(maxItems = 1))
       }
     })
-    
+
     # output$column_valid <- renderText({
     #   pData_cols <- flowCore::pData(flow_object$flowSet)
     #   if(length(intersect(input$column_sel, colnames(as.data.frame(data())))) == 0){
-    #     print( paste("<B>WARNING</B>: Metadata contains no column ", input$column_sel, 
+    #     print( paste("<B>WARNING</B>: Metadata contains no column ", input$column_sel,
     #                  " Select a valid column. \n\n", sep = ""))
     #   } else if(length(intersect(pData_cols$name, as.data.frame(data())[,input$column_sel])) == length(pData_cols$name)) {
     #     print(paste("Matching values found between metadata column ", sQuote(input$column_sel), " and flowSet sample names. Joining...", sep  =""))
-    #   } else if(length(intersect(pData_cols$name, 
+    #   } else if(length(intersect(pData_cols$name,
     #                              as.data.frame(data())[,input$column_sel])) == length(pData_cols$name)) {
     #     print(paste("Matching values found between metadata column ", sQuote(input$column_sel), " and flowSet filenames. Joining...", sep = ""))
     #   } else {
     #     print("<B>WARNING</B>: Incomplete or absent matching values from current flowSet metadata. \n\n")
     #   }
-    #   
+    #
     # })
-    
-    
+
+
     submitInput <- observeEvent( input$submit,{
       out_df <- as.data.frame(data())
       out <- list("metadata_df" = out_df, "key" = input$column_sel )
       shiny::stopApp(out)
-      
+
     })
   }
-  
+
   sel <- shiny::runApp(shinyApp(ui = ui, server = server))
-  
+
 }
 

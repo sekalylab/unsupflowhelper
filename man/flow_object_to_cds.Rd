@@ -4,7 +4,7 @@
 \alias{flow_object_to_cds}
 \title{Export a Flow Object to a CDS (cell_data_set).}
 \usage{
-flow_object_to_cds(flow_object, scale = TRUE)
+flow_object_to_cds(flow_object, scale = FALSE)
 }
 \arguments{
 \item{flow_object}{A Flow Object}

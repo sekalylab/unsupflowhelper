@@ -10,7 +10,7 @@ cluster_jitterplot(
   value = "relative",
   louvain_select = NULL,
   group = NULL,
-  stats = "wilcox"
+  stats = NULL
 )
 }
 \arguments{

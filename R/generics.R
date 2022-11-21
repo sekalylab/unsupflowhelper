@@ -6,44 +6,6 @@
 #'
 NULL
 
-flow_object <- setClass(
-  Class = "flow_object",
-  slots = c(
-    flowSet = "flowSet",
-    dataset = "character",
-    parameters = "list",
-    dims = "data.frame",
-    louvain = "data.frame",
-    staining_controls = "flowSet",
-    trajectories = "list",
-    pseudotime = "data.frame"
-  )
-)
-
-
-#' Print Flow Object
-#'
-#' Prints the contents of the object. 
-#'
-#' @param obj A Flow Object object. 
-#'
-#'
-
-print.flow_object<-function(obj){
-  cat("An object of class flow_object \n")
-  cat(length(Get_MarkerNames(obj, show_channel_name = F, select = "all")), " markers across" ,
-             length(names(obj$flowSet@frames)), " samples.\n ")
-  cat(length(Get_MarkerNames(obj, show_channel_name = F, select = "included")), " included markers. \n ")
-  cat(length(Get_MarkerNames(obj, show_channel_name = F, select = "excluded")), " excluded markers. \n\n ")
-  if(!is.null(obj$dims)){
-    cat("Data transformed using the ", obj$parameters$transformation, " method\n")
-    cat("UMAP dimensions calculated \n ")
-  }
-  if(!is.null(obj$louvain)){
-    cat(length(unique(obj$louvain$louvain)), "louvain clusters detected \n ")
-  }
-  
-}
 
 
 #' Select files for flow object - Shiny
@@ -65,20 +27,20 @@ select_files_shiny <- function(dir){
       sidebarPanel(
         tags$h5("Select sample files"),
 
-        
+
         shinyFiles::shinyFilesButton("file", "File select", "Please select a file",
                                      multiple = TRUE,
                                      filetype = list(data = c("fcs","csv")),
                                      viewtype = "detail"),
         helpText("Note: You can select FCS or CSV files (if exported from FlowJo) \n\n"),
-        
+
         actionButton("submit", "Submit")
-        
+
       ),
       mainPanel(
         tags$h4("Selected files"),
         DT::dataTableOutput("fileDF"),
-        
+
         tags$hr()
       )
     )
@@ -86,7 +48,7 @@ select_files_shiny <- function(dir){
   server <- function(input, output){
     volumes <- c(workDir = dir, Home = fs::path_home(), shinyFiles::getVolumes()())
     shinyFiles::shinyFileChoose(input, "file", roots = volumes)
-  
+
     data <- eventReactive(input$file, {
       pathfile <- as.character(shinyFiles::parseFilePaths(volumes, input$file)$datapath)
       namefile <- as.character(shinyFiles::parseFilePaths(volumes, input$file)$name)
@@ -98,12 +60,12 @@ select_files_shiny <- function(dir){
     submitInput <- observeEvent( input$submit,{
       out_df <- as.data.frame(data())
       shiny::stopApp(out_df$Path)
-    
+
     })
   }
-  
+
   sel <- shiny::runApp(shinyApp(ui = ui, server = server))
-  
+
 }
 
 
@@ -119,7 +81,7 @@ select_files_shiny <- function(dir){
 #' @param min_events Minimum number of events per file. Any sample found with events under this value will be ignored. Defaults to 500.
 #' @param max_total_events Total number of events across samples cannot exceed this value: subsampling number will be adjusted accordingly. Defaults to  2e+05
 #' @param unequal Logical argument to determine whether or not to allow to take unequal number of events if some samples are limiting. When set to True. Defaults to FALSE.
-#' @param interactive Logical argument to determine whether or not to use the interactive mode to select files in a graphical user interface . Defaults to FALSE. 
+#' @param interactive Logical argument to determine whether or not to use the interactive mode to select files in a graphical user interface . Defaults to FALSE.
 #'
 #' @return A Flow Object
 #'
@@ -167,7 +129,7 @@ CreateFlowObject <- function(flowSet = NULL,
       file_in <- select_files_shiny(getwd())
     } else {
       file_in <- files
-      
+
     }
     checkmate::assertFile(file_in, .var.name = "files", add = coll)
     checkmate::reportAssertions(coll)
