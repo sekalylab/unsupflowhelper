@@ -9,6 +9,7 @@ Unsupflowhelper will help you perform dimension reduction and clustering, and vi
 
 ## Installation
 You can install the package in R using 
+If using MAC OS X , you must also install XCode in the App Store to compile certain packages. 
 
 ```
 library(devtools)
@@ -27,7 +28,8 @@ BiocManager::install("tradeSeq")
 ## Vignettes
 A Step-by-step guide to using unsuperflowhelper is available in vignettes.
 
-[Basic vignette](https://sekalylab.github.io/unsupflowhelper/guides/unsupervised_flow_vignette)
+[Basic vignette](https://sekalylab.github.io/unsupflowhelper/guides/unsupervised_flow_vignette) \n
+
 [Trajectory analysis vignette](https://sekalylab.github.io/unsupflowhelper/guides/trajectory_vignette)
 
 
