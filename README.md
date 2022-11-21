@@ -28,7 +28,7 @@ BiocManager::install("tradeSeq")
 ## Vignettes
 A Step-by-step guide to using unsuperflowhelper is available in vignettes.
 
-[Basic vignette](https://sekalylab.github.io/unsupflowhelper/guides/unsupervised_flow_vignette) \n
+[Basic vignette](https://sekalylab.github.io/unsupflowhelper/guides/unsupervised_flow_vignette) 
 
 [Trajectory analysis vignette](https://sekalylab.github.io/unsupflowhelper/guides/trajectory_vignette)
 
