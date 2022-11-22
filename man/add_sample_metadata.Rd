@@ -8,6 +8,7 @@ add_sample_metadata(
   flow_object,
   metadata = NULL,
   key_column = NULL,
+  flowobj_column = NULL,
   interactive = FALSE
 )
 }
@@ -17,6 +18,8 @@ add_sample_metadata(
 \item{metadata}{A data.frame containing sample annotations.}
 
 \item{key_column}{Name of the column matching sample names.}
+
+\item{flowobj_column}{Name of the column matching sample names to be matched against in the flow object.}
 
 \item{interactive}{Logical argument to determine whether or not to activate the interactive mode, which opens up a graphical interface to select a metadata file. Defaults to FALSE.}
 }

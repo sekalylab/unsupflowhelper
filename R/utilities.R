@@ -637,6 +637,7 @@ annotate_clusters_shiny <- function(flow_object ){
 #' @param flow_object A Flow Object
 #' @param metadata A data.frame containing sample annotations.
 #' @param key_column Name of the column matching sample names.
+#' @param flowobj_column Name of the column matching sample names to be matched against in the flow object.
 #' @param interactive  Logical argument to determine whether or not to activate the interactive mode, which opens up a graphical interface to select a metadata file. Defaults to FALSE.
 #'
 #' @return A Flow Object
@@ -647,6 +648,7 @@ annotate_clusters_shiny <- function(flow_object ){
 add_sample_metadata <- function(flow_object,
                                 metadata = NULL,
                                 key_column = NULL,
+                                flowobj_column = NULL,
                                 interactive = FALSE){
   coll <- checkmate::makeAssertCollection()
   if(methods::is(flow_object) != "flow_object"){
@@ -654,6 +656,7 @@ add_sample_metadata <- function(flow_object,
   }
   checkmate::assertClass(metadata, classes = "data.frame", null.ok = T, .var.name = "metadata", add = coll)
   checkmate::assertCharacter(key_column, len = 1, any.missing = F, null.ok = T, .var.name = "key_column", add = coll)
+  checkmate::assertCharacter(flowobj_column, len = 1, any.missing = F, null.ok = T, .var.name = "flowobj_column", add = coll)
   checkmate::reportAssertions(coll)
 
 
@@ -661,12 +664,13 @@ add_sample_metadata <- function(flow_object,
   checkmate::reportAssertions(coll)
 
   df <- as.data.frame(flowWorkspace::pData(flow_object$flowSet)) %>%
-            tibble::rownames_to_column("SampleID")
+            tibble::rownames_to_column("tmp_sampleid")
 
   if(interactive == T){
     meta_int <- add_metadata_shiny(flow_object)
     metadata_df <- meta_int$metadata_df
     key_col <- meta_int$key
+    flowobj_col <- meta_int$fS_key
   } else {
     if(is.null(metadata)){
       coll$push("Error: Must supply metadata dataframe in non-interactive mode")
@@ -674,31 +678,47 @@ add_sample_metadata <- function(flow_object,
     } else if(is.null(key_column)){
       coll$push("Error: Must supply a key column in non-interactive mode")
       checkmate::reportAssertions(coll)
+    } else if(is.null(flowobj_column)){
+      coll$push("Error: Must supply a key flowobject column in non-interactive mode")
+      checkmate::reportAssertions(coll)
     } else {
       metadata_df <- metadata
       key_col <- key_column
+      flowobj_col <- flowobj_column
     }
 
   }
 
-  if(!key_col %in% colnames(metadata_df)){
-    coll$push(paste("Sample metadata does not contain a corrresponding ", sQuote(key_col) ," column", sep = ""))
-  }
-
-  invalid_samples <- setdiff(df$SampleID, metadata_df[[key_col]])
+  # if(!key_col %in% colnames(metadata_df)){
+  #   coll$push(paste("Sample metadata does not contain a corrresponding ", sQuote(key_col) ," column", sep = ""))
+  # }
+  #
+  invalid_samples <- setdiff(df[[flowobj_col]], metadata_df[[key_col]])
   if(length(invalid_samples) > 0){
     coll$push(paste("Samples ", paste(sQuote(invalid_samples), collapse = "; "),
-                    " were not found in the selected flow_object. Use valid SampleID, such as those found in row.names of ",
-                    "`Get_Metadata(flow_object)`. ", sep = ""))
+                    " were not found in the selected flow_object column.  ", sep = ""))
 
+  }
+
+  sample_intersect <- intersect(df[[flowobj_col]], metadata_df[[key_col]])
+  if(length(sample_intersect) == 0){
+    coll$push("No common samples found in the supplied metadata column vs the flow_object metadata column.")
+    reportAssertions(coll)
+  } else if(length(sample_intersect) < length(df[[flowobj_col]])){
+    message("Warning: supplied metadata has values for only a subset of samples. ")
   }
   checkmate::reportAssertions(coll)
   rm_df <- colnames(metadata_df)
   rm_df <- rm_df[rm_df != key_col]
 
   df <- df[,setdiff(colnames(df), rm_df)]
-  df <- dplyr::left_join(df, metadata_df, by = c("SampleID" = key_col)) %>%
-                  tibble::column_to_rownames("SampleID")
+  column_align <- key_col
+  names(column_align) <- flowobj_col
+
+    #return(list("flowobj_col" = flowobj_col, "df" = df, "metadata_df" = metadata_df, "key_col" = key_col))
+  #df <- dplyr::left_join(df, metadata_df, by = column_align) %>%
+  df <- merge(x = df,  y= metadata_df, by.x = flowobj_col, by.y = key_col, all.x = T) %>%
+                  tibble::column_to_rownames("tmp_sampleid")
 
   na_count <- length(apply(is.na(df), 2, which))
   if(na_count > 0){
@@ -738,6 +758,7 @@ add_metadata_shiny <- function(flow_object){
         helpText("Note: You can select XLS, XLSX, TSV or CSV files  \n\n"),
 
         uiOutput("column_sel"),
+        uiOutput("column_sel_flow"),
         # tags$h5(htmlOutput("column_valid")),
 
         actionButton("submit", "Submit")
@@ -747,7 +768,9 @@ add_metadata_shiny <- function(flow_object){
         tags$h4("Sample Metadata"),
         DT::dataTableOutput("metaDF"),
 
-        tags$hr()
+        tags$hr(),
+        tags$h4("Current flow object metadata"),
+        DT::dataTableOutput("metaDF_flow")
       )
     )
   )
@@ -767,24 +790,42 @@ add_metadata_shiny <- function(flow_object){
       }
 
     })
+
+    metaF <- flowCore::pData(flow_object$flowSet)
     output$metaDF <- DT::renderDataTable({  DT::datatable(data(),
                                                           editable = T,
                                                           options = list(pageLength = 10))})
 
+
+    output$metaDF_flow <- DT::renderDataTable({  DT::datatable(metaF ,
+                                                          editable = F,
+                                                          options = list(pageLength = 10))})
+
+
+    output$column_sel_flow = renderUI({
+      if(!is.null(data())){
+        selectizeInput("column_sel_flow",
+                       label = h5("Select Annotation Column key from FlowSet"),
+                       choices = unique(c("name", colnames(as.data.frame(metaF)))),
+                       multiple = F,
+                       selected = "name",
+                       options = list(maxItems = 1))
+      }
+    })
 
     output$column_sel = renderUI({
       if(!is.null(data())){
         selectizeInput("column_sel",
                        label = h5("Select Annotation Column"),
                        choices = unique(c("name", colnames(as.data.frame(data())))),
-                       multiple = TRUE,
+                       multiple = F,
                        selected = "name",
                        options = list(maxItems = 1))
       } else {
         selectizeInput("column_sel",
                        label = h5("Select Annotation Column"),
                        choices = c("name"),
-                       multiple = TRUE,
+                       multiple = F,
                        selected = "name",
                        options = list(maxItems = 1))
       }
@@ -809,7 +850,7 @@ add_metadata_shiny <- function(flow_object){
 
     submitInput <- observeEvent( input$submit,{
       out_df <- as.data.frame(data())
-      out <- list("metadata_df" = out_df, "key" = input$column_sel )
+      out <- list("metadata_df" = out_df, "key" = input$column_sel, "fS_key" = input$column_sel_flow )
       shiny::stopApp(out)
 
     })
