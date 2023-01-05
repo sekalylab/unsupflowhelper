@@ -172,6 +172,18 @@ cluster_jitterplot <- function(flow_object,
       coll$push(paste("Grouping factor ", group, " is not found in sample metadata"))
       checkmate::reportAssertions(coll)
     } else {
+      numeric_columns <- colnames(df)[unlist(lapply(df, is.numeric), use.names = FALSE)]
+      character_column <- colnames(df)[!unlist(lapply(df, is.numeric), use.names = FALSE)]
+
+     if(group %in% numeric_columns){
+      coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
+                      ": Cannot group.by variable ",
+                      group, ". Metadata column cannot be of numeric type. Options are ",
+                      paste(sQuote(character_column), collapse = ";") , sep = "" ))
+
+     }
+    checkmate::reportAssertions(coll)
+
       p <- ggplot(df, aes_string(x = group, y = y_col, color = paste("`", group, "`", sep = ""))) +
         geom_boxplot() +
         geom_jitter() +
@@ -388,8 +400,8 @@ plot_cluster_heatmap <- function(flow_object,
     tidyr::spread(.data$marker, .data$med) %>%
     tibble::column_to_rownames("annotation_label")
 
-  
-  
+
+
   if(!is.null(louvain_select)){
 
     invalid_filter <- setdiff(as.character(louvain_select), as.character(annot_df$louvain))
@@ -398,8 +410,8 @@ plot_cluster_heatmap <- function(flow_object,
     }
     label_select <- annot_df[as.character(annot_df$louvain) %in% as.character(louvain_select),]$annotation_label
     mat <- mat[as.character(label_select),]
-  } 
-  
+  }
+
   ord <- stats::hclust( stats::dist(as.matrix(scale(mat, center = T, scale = T)),
                       method = clustering_distance),
                  method = clustering_method)$order
@@ -430,29 +442,29 @@ plot_cluster_heatmap <- function(flow_object,
     dplyr::select(-.data$med)
 
   colorAssign <- function(valueVector, scale_limits = NULL, colors = c("darkblue", "blue", "white", "red", "darkred"), length.vector = 100){
-    colorLS <- grDevices::colorRampPalette(colors = colors)(length.vector)  
+    colorLS <- grDevices::colorRampPalette(colors = colors)(length.vector)
     if(is.null(scale_limits)){
       breaks <- seq(-max(abs(valueVector)), max(abs(valueVector)), length.out = length.vector)
     } else {
       breaks <- seq(scale_limits[1], scale_limits[2], length.out = length.vector)
     }
-  
+
     minBreak <- which(abs(breaks - min(valueVector)) == min(abs(breaks - min(valueVector))))
     maxBreak <- which(abs(breaks - max(valueVector)) == min(abs(breaks - max(valueVector))))
     return(colorLS[minBreak:maxBreak])
   }
-  
+
   if(!is.null(louvain_select)){
     fDF_unfilt <- flowDF_scaled
-   
-    
+
+
     flowDF_scaled <- flowDF_scaled[flowDF_scaled$annotation_label %in% c("Control", as.character(label_select)),]
-    colors <- colorAssign(valueVector = flowDF_scaled$scaled, 
-                          scale_limits = c(min(fDF_unfilt$scaled, na.rm = T), 
+    colors <- colorAssign(valueVector = flowDF_scaled$scaled,
+                          scale_limits = c(min(fDF_unfilt$scaled, na.rm = T),
                                            max(fDF_unfilt$scaled, na.rm = T)))
     fDF <- fDF[fDF$annotation_label %in% c("Control", as.character(label_select)),]
   } else{
-    
+
     colors <- colorAssign(valueVector = flowDF_scaled$scaled)
   }
   col_order  <- row.names(mat)[ord]

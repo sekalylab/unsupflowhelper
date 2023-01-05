@@ -888,6 +888,18 @@ plot_pseudotime_boxplot <- function(flow_object,
     coll$push(paste("Grouping factor ", group.by, " is not found in sample metadata"))
 
   }
+  df <- Get_MetaData(flow_object)
+  numeric_columns <- colnames(df)[unlist(lapply(df, is.numeric), use.names = FALSE)]
+  character_column <- colnames(df)[!unlist(lapply(df, is.numeric), use.names = FALSE)]
+
+  if(group.by %in% numeric_columns){
+    coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
+                    ": Cannot group.by variable ",
+                    group.by, ". Metadata column cannot be of numeric type. Options are ",
+                    paste(sQuote(character_column), collapse = ";") , sep = "" ))
+
+  }
+
   checkmate::reportAssertions(coll)
 
 
