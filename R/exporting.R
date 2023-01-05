@@ -77,7 +77,7 @@ export_to_fcs <- function(flow_object,
 
     flowDF_annot <- flowDF_annot %>%
                     dplyr::left_join(sample_metadata, by = "SampleID")
-    factor_mat <- flowDF_annot[,colnames(sample_metadata)] %>%
+    factor_mat <- flowDF_annot[,c("UMAP1", "UMAP2", "louvain", colnames(sample_metadata))] %>%
                   dplyr::select(-.data$SampleID)
     #out_cols <- intersect(c("UMAP1", "UMAP2", "louvain", colnames(sample_metadata)), )
   } else {
@@ -110,6 +110,8 @@ export_to_fcs <- function(flow_object,
                         range = ifelse(.data$name %in% limit_reset_cols, .data$range + 2, .data$range)) %>%
           tibble::column_to_rownames("rown")
   ff@parameters@data <- param
+
+
 
   flowCore::write.FCS(ff, filename)
 
