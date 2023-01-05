@@ -1,3 +1,11 @@
+# unsupflowhelper 1.2
+## Changes
+- Added plot pseudotime boxplot functionality: statistical tests on mean or median
+
+# unsupflowhelper 1.1.1
+## Changes
+- Fixed an issue where export_to_fcs didn't include louvain clusters and UMAp coordinates. 
+
 # unsupflowhelper 1.1
 
 ## Changes

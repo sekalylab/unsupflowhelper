@@ -603,99 +603,6 @@ plot_grouped_pseudotime <- function(flow_object,
 }
 
 
-#' Plot a pseudotime boxplot per group
-#'
-#' Display a boxplot for pseudotime on the Y-axis, cluster or sample annotations on the X-Axis.
-#'
-#' @param flow_object A Flow Object
-#' @param trajectory Name of the trajectory to plot.
-#' @param group.by Sample or cluster annotation to separate cells by.
-#'
-#' @return A ggplot2 object
-#'
-#' @export
-#'
-
-plot_pseudotime_boxplot <- function(flow_object,
-                                    trajectory,
-                                    group.by){
-  coll <- checkmate::makeAssertCollection()
-  if (methods::is(flow_object) != "flow_object") {
-    coll$push("flow_object not recognized (nor container or panel). Please supply a valid flow object.")
-  }
-
-
-  checkmate::assertCharacter(trajectory, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
-  checkmate::assertCharacter(group.by, any.missing = F, null.ok = F, len = 1, .var.name = "group.by", add = coll)
-
-  checkmate::reportAssertions(coll)
-
-  if(is.null(flow_object$pseudotime)){
-    coll$push("No pseudotime values stored in this flow_object. Please use `import_trajectory` first.")
-
-  }
-  checkmate::reportAssertions(coll)
-
-  sample_metadata <- flowWorkspace::pData(flow_object$flowSet) %>% tibble::rownames_to_column("SampleID")
-  df <- get_flowSet_matrix(flow_object, add_sample_id = T, annotations = T)
-
-
-  numeric_columns <- colnames(df)[unlist(lapply(df, is.numeric), use.names = FALSE)]
-  character_column <- colnames(df)[!unlist(lapply(df, is.numeric), use.names = FALSE)]
-
-
-  if(!group.by %in% colnames(df)){
-    coll$push(paste("Grouping factor ", group.by, " is not found in sample metadata"))
-    checkmate::reportAssertions(coll)
-  }
-
-
-
-  if(!group.by %in% colnames(df)){
-    coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
-                    ": Cannot group.by variable ", group.by,
-                    ". Column not found in metadata. Options are ",
-                    paste(sQuote(character_column), collapse = ";") , sep = "" ))
-  } else if(group.by %in% numeric_columns){
-    coll$push(paste("Error for dataset ", sQuote(flow_object$dataset),
-                    ": Cannot group.by variable ",
-                    group.by, ". Metadata column cannot be of numeric type. Options are ",
-                    paste(sQuote(character_column), collapse = ";") , sep = "" ))
-
-  }
-
-  checkmate::reportAssertions(coll)
-
-  pseudo_df <- df %>%
-    dplyr::left_join(flow_object$pseudotime %>%
-                       tibble::rownames_to_column("cellID") %>%
-                       tidyr::gather(key = "trajectory_name", value = "pseudotime", -.data$cellID), by = "cellID") %>%
-    dplyr::filter(!is.na(.data$pseudotime))
-
-
-  invalid_traj <- setdiff(trajectory, names(flow_object$trajectories))
-  if(length(invalid_traj) > 0){
-    coll$push(paste("Invalid trajectory name: ", paste(sQuote(invalid_traj), collapse = "; "), sep = ""))
-    checkmate::reportAssertions(coll)
-  } else {
-
-    pseudo_df <- pseudo_df[pseudo_df$trajectory_name == trajectory,]
-
-  }
-
-  outliers <- pseudo_df %>%
-    dplyr::group_by_at(vars(group.by)) %>%
-    dplyr::filter(.data$pseudotime > stats::quantile(.data$pseudotime, 0.75) + 1.5 * stats::IQR(.data$pseudotime) |
-                    .data$pseudotime < stats::quantile(.data$pseudotime, 0.25) - 1.5 * stats::IQR(.data$pseudotime))
-  p <- ggplot(pseudo_df, aes_string(x = paste("`", group.by, "`", sep = ""), y = "pseudotime", color = paste("`", group.by, "`", sep = ""))) +
-    geom_boxplot(outlier.shape = NA) +
-    theme_bw()
-
-
-
-  return(p)
-
-}
 
 #' Plot a pseudotime marker heatmap
 #'
@@ -934,6 +841,98 @@ FindTrajectoryMarkers <- function(cds){
 }
 
 
+#' Plot a pseudotime boxplot
+#'
+#' Display mean or median pseudotime values within a trajectory across metadata groups
+#'
+#' @param flow_object A Flow Object
+#' @param trajectory Name of the trajectory to plot.
+#' @param metric Summary statistic to display. Accepts `mean` or `median`.
+#' @param group.by Metadata variable to compare pseudotime.
+#' @param stats Selection of a statistical test to compare groups (if using the `groups` parameter). Accepts `wilcox`, `t.test` or `none`. Defaults to `wilcox`.
+#' @return A ggplot boxplot
+#'
+#' @export
+#'
 
+plot_pseudotime_boxplot <- function(flow_object,
+                                    trajectory,
+                                    metric = "mean",
+                                    group.by,
+                                    stats = NULL){
+  coll <- checkmate::makeAssertCollection()
+  if (methods::is(flow_object) != "flow_object") {
+    coll$push("flow_object not recognized (nor container or panel). Please supply a valid flow object.")
+  }
+
+
+  checkmate::assertCharacter(trajectory, any.missing = F, null.ok = F, len = 1, .var.name = "trajectory", add = coll)
+  checkmate::assertCharacter(metric, any.missing = F, null.ok = F, min.len = 1, .var.name = "metric", add = coll)
+  checkmate::assertCharacter(group.by, null.ok = F ,any.missing = F, len = 1, .var.name = "group.by", add = coll)
+  checkmate::assertCharacter(stats, null.ok = T ,any.missing = F, len = 1, .var.name = "stats", add = coll)
+  if(!is.null(stats)){
+    checkmate::assertChoice(stats, choices = c("wilcox", "t.test", "anova", "kruskal.test"), .var.name = "stats", add = coll)
+  }
+  checkmate::reportAssertions(coll)
+
+  if(is.null(flow_object$pseudotime)){
+    coll$push("No pseudotime values stored in this flow_object. Please use `import_trajectory` first.")
+
+  }
+
+  if(!metric %in% c("mean", "median")){
+    coll$push("Invalid metric: accepted values are `mean` or `median`")
+  }
+
+  if(!group.by %in% colnames(flowWorkspace::pData(flow_object$flowSet))){
+    coll$push(paste("Grouping factor ", group.by, " is not found in sample metadata"))
+
+  }
+  checkmate::reportAssertions(coll)
+
+
+
+
+
+  invalid_traj <- setdiff(trajectory, names(flow_object$trajectories))
+  if(length(invalid_traj) > 0){
+    coll$push(paste("Invalid trajectory name: ", paste(sQuote(invalid_traj), collapse = "; "), sep = ""))
+    checkmate::reportAssertions(coll)
+  }
+
+  pseudo_df <-  flow_object$pseudotime %>%
+    tibble::rownames_to_column("cellID") %>%
+    tidyr::gather(key = "trajectory_name", value = "pseudotime", -.data$cellID) %>%
+    dplyr::filter(.data$trajectory_name == trajectory) %>%
+    tidyr::separate(.data$cellID, into = c("SampleID", "cellNumber"), sep = "__") %>%
+    dplyr::group_by(.data$SampleID, .data$trajectory_name) %>%
+    dplyr::summarise(mean = mean(.data$pseudotime, na.rm = T),
+                     median = stats::median(.data$pseudotime, na.rm = T)) %>%
+    dplyr::ungroup() %>%
+    dplyr::inner_join(Get_MetaData(flow_object) %>%
+                        tibble::rownames_to_column("SampleID"), by = "SampleID")
+
+
+  p <- ggplot(pseudo_df, aes_string(x = group.by, y = metric, color =  paste("`", group.by, "`", sep = ""))) +
+    geom_boxplot() +
+    geom_jitter() +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+  if(metric == "mean"){
+    p <- p +
+          ylab("Mean Pseudotime")
+  } else if(metric == "median"){
+    p <- p +
+      ylab("Median Pseudotime")
+  }
+  if(!is.null(stats)){
+    p <- p + ggpubr::stat_compare_means(method = stats)
+  }
+
+  return(p)
+
+
+}
 
 
