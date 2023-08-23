@@ -108,7 +108,7 @@ Cluster_flow <- function(flow_object,
   }
 
 
-  louvain_df <- data.frame("louvain" = as.character(igraph::membership(Rphenograph::Rphenograph(flowDF, k = 60)[[2]]))) %>%
+  louvain_df <- data.frame("louvain" = as.character(igraph::membership(Rphenograph::Rphenograph(flowDF, k = k)[[2]]))) %>%
     dplyr::mutate(partition = "1")
   row.names(louvain_df) <- row.names(flowDF)
 
